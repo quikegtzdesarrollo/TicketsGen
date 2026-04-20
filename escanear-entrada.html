@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TicketGen | Escanear entrada</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <button class="icon-button menu-toggle" type="button" aria-label="Abrir menú">
+        ☰
+      </button>
+      <span class="brand">TicketGen</span>
+      <span class="login-indicator" id="login-indicator">
+        <span class="login-avatar" aria-hidden="true"></span>
+        <span class="login-name"></span>
+      </span>
+    </header>
+    <nav class="menu" id="menu">
+      <div class="menu-backdrop" data-close-menu="true"></div>
+      <div class="menu-panel">
+        <h2>Menú</h2>
+        <a href="index.html">Home</a>
+        <a href="mis-boletos.html">Boletos</a>
+        <a href="compra-boletos.html">Generación de boletos</a>
+        <a href="escanear-entrada.html">Escanear entrada</a>
+        <a href="escanear-salida.html">Escanear salida</a>
+        <button class="menu-logout" type="button">Cerrar sesión</button>
+      </div>
+    </nav>
+
+    <main class="page">
+      <section class="card card-wide">
+        <header class="section-header">
+          <div>
+            <h1>Escanear entrada</h1>
+            <p class="subtitle">
+              Usa la cámara para validar el QR del boleto.
+            </p>
+          </div>
+          <a class="secondary-link" href="index.html">Volver al home</a>
+        </header>
+
+        <div class="scanner-layout">
+          <div id="qr-reader" class="scanner-box"></div>
+          <div class="scanner-info">
+            <p class="helper">Enfoca el QR del boleto para validarlo.</p>
+            <p id="scan-status" class="status"></p>
+            <div class="scan-result" id="scan-result">
+              <p class="scan-label">Boleto:</p>
+              <p class="scan-value" id="scan-ticket"></p>
+              <p class="scan-label">Nombre:</p>
+              <p class="scan-value" id="scan-name"></p>
+              <p class="scan-label">Clasificación:</p>
+              <p class="scan-value" id="scan-type"></p>
+              <p class="scan-label">Precio:</p>
+              <p class="scan-value" id="scan-price"></p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-client.js"></script>
+    <script src="menu.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="escanear-entrada.js"></script>
+  </body>
+</html>

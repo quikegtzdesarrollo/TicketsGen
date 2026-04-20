@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TicketGen | Mis boletos</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <button class="icon-button menu-toggle" type="button" aria-label="Abrir menú">
+        ☰
+      </button>
+      <span class="brand">TicketGen</span>
+      <span class="login-indicator" id="login-indicator">
+        <span class="login-avatar" aria-hidden="true"></span>
+        <span class="login-name"></span>
+      </span>
+    </header>
+    <nav class="menu" id="menu">
+      <div class="menu-backdrop" data-close-menu="true"></div>
+      <div class="menu-panel">
+        <h2>Menú</h2>
+        <a href="index.html">Home</a>
+        <a href="mis-boletos.html">Boletos</a>
+        <a href="compra-boletos.html">Generación de boletos</a>
+        <a href="escanear-entrada.html">Escanear entrada</a>
+        <a href="escanear-salida.html">Escanear salida</a>
+        <button class="menu-logout" type="button">Cerrar sesión</button>
+      </div>
+    </nav>
+    <main class="page">
+      <section class="card card-wide">
+        <header class="section-header">
+          <div>
+            <h1>Boletos</h1>
+            <p class="subtitle">
+              Filtra por fecha y consulta los datos de asignación.
+            </p>
+          </div>
+          <a class="secondary-link" href="index.html">Volver al home</a>
+        </header>
+
+        <form class="filters">
+          <label class="field">
+            Desde
+            <input type="date" name="fecha_inicio" />
+          </label>
+          <label class="field">
+            Hasta
+            <input type="date" name="fecha_fin" />
+          </label>
+          <label class="field">
+            Celular
+            <input type="text" name="celular" placeholder="Ej: 5551234567" />
+          </label>
+          <button class="primary-link button" type="button">
+            Aplicar filtros
+          </button>
+        </form>
+
+        <p class="helper" id="tickets-status">Cargando boletos...</p>
+        <div class="table" id="tickets-table">
+          <div class="table-row table-head">
+            <span>ID del boleto</span>
+            <span>Asignado a</span>
+            <span>Celular</span>
+            <span>QR</span>
+            <span>Comprobante</span>
+            <span>Eliminar</span>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <div class="modal" id="qr-modal" aria-hidden="true" role="dialog">
+      <div class="modal-backdrop" data-close-modal="true"></div>
+      <div class="modal-card" role="document">
+        <div class="modal-header">
+          <h2>QR del boleto</h2>
+          <button class="icon-button" type="button" data-close-modal="true">
+            ✕
+          </button>
+        </div>
+        <div class="qr-placeholder">
+          <div class="qr-box" id="qr-code"></div>
+          <p id="qr-ticket-id" class="helper"></p>
+          <p id="qr-ticket-owner" class="helper"></p>
+          <div class="qr-actions">
+            <button class="secondary-link button" id="qr-download" type="button">
+              Descargar QR
+            </button>
+            <button class="primary-link button" id="qr-share" type="button">
+              Compartir
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal" id="receipt-modal" aria-hidden="true" role="dialog">
+      <div class="modal-backdrop" data-close-receipt="true"></div>
+      <div class="modal-card modal-card-wide" role="document">
+        <div class="modal-header">
+          <h2>Comprobante de pago</h2>
+          <button class="icon-button" type="button" data-close-receipt="true">
+            ✕
+          </button>
+        </div>
+        <div class="receipt-preview">
+          <img id="receipt-image" alt="Comprobante de pago" />
+        </div>
+        <a id="receipt-link" class="secondary-link" target="_blank" rel="noreferrer">
+          Abrir en nueva pestaña
+        </a>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-client.js"></script>
+    <script src="menu.js"></script>
+    <script src="mis-boletos.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <script src="qr-modal.js"></script>
+  </body>
+</html>

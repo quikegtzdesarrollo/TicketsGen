@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TicketGen | Home</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <button class="icon-button menu-toggle" type="button" aria-label="Abrir menú">
+        ☰
+      </button>
+      <span class="brand">TicketGen</span>
+      <span class="login-indicator" id="login-indicator">
+        <span class="login-avatar" aria-hidden="true"></span>
+        <span class="login-name"></span>
+      </span>
+    </header>
+    <nav class="menu" id="menu">
+      <div class="menu-backdrop" data-close-menu="true"></div>
+      <div class="menu-panel">
+        <h2>Menú</h2>
+        <a href="index.html">Home</a>
+        <a href="mis-boletos.html">Boletos</a>
+        <a href="compra-boletos.html">Generación de boletos</a>
+        <a href="escanear-entrada.html">Escanear entrada</a>
+        <a href="escanear-salida.html">Escanear salida</a>
+        <button class="menu-logout" type="button">Cerrar sesión</button>
+      </div>
+    </nav>
+    <main class="page">
+      <section class="card">
+        <h1>Bienvenidos a TicketGen</h1>
+        <p>Pronto podrás comprar y administrar boletos para tu evento.</p>
+        <div class="home-summary" id="home-summary">
+          <p class="helper">Cargando resumen...</p>
+        </div>
+        <div class="home-actions">
+          <a class="primary-link" href="login.html">Ir al login</a>
+          <a class="secondary-link" href="mis-boletos.html">
+            Ver boletos
+          </a>
+        </div>
+      </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-client.js"></script>
+    <script src="menu.js"></script>
+    <script src="home.js"></script>
+  </body>
+</html>

@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TicketGen | Generación de boletos</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <button class="icon-button menu-toggle" type="button" aria-label="Abrir menú">
+        ☰
+      </button>
+      <span class="brand">TicketGen</span>
+      <span class="login-indicator" id="login-indicator">
+        <span class="login-avatar" aria-hidden="true"></span>
+        <span class="login-name"></span>
+      </span>
+    </header>
+    <nav class="menu" id="menu">
+      <div class="menu-backdrop" data-close-menu="true"></div>
+      <div class="menu-panel">
+        <h2>Menú</h2>
+        <a href="index.html">Home</a>
+        <a href="mis-boletos.html">Boletos</a>
+        <a href="compra-boletos.html">Generación de boletos</a>
+        <a href="escanear-entrada.html">Escanear entrada</a>
+        <a href="escanear-salida.html">Escanear salida</a>
+        <button class="menu-logout" type="button">Cerrar sesión</button>
+      </div>
+    </nav>
+
+    <main class="page">
+      <section class="card card-wide">
+        <header class="section-header">
+          <div>
+            <h1>Generación de boletos</h1>
+            <p class="subtitle">
+              Agrega los nombres de los asistentes y genera los boletos.
+            </p>
+          </div>
+          <a class="secondary-link" href="index.html">Volver al home</a>
+        </header>
+
+        <div class="ticket-form">
+          <div class="ticket-header">
+            <h2>Personas asistentes</h2>
+            <button class="primary-link button" id="add-person" type="button">
+              Agregar persona
+            </button>
+          </div>
+
+          <div class="ticket-list" id="ticket-list">
+            <div class="ticket-row">
+              <label class="field">
+                Nombre completo
+                <input type="text" name="nombre" placeholder="Ej: Andrea López" />
+              </label>
+              <label class="checkbox-field">
+                <input type="checkbox" name="menor" />
+                Menor de 13 años
+              </label>
+              <button class="icon-button remove-person" type="button">🗑</button>
+            </div>
+          </div>
+
+          <div class="ticket-actions">
+            <p class="helper">
+              Precio: Niño $30 | Adulto $100
+            </p>
+            <button class="primary-link button" id="open-summary" type="button">
+              Ver resumen
+            </button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <div class="modal" id="summary-modal" aria-hidden="true" role="dialog">
+      <div class="modal-backdrop" data-close-modal="true"></div>
+      <div class="modal-card modal-card-wide" role="document">
+        <div class="modal-header">
+          <h2>Resumen de compra</h2>
+          <button class="icon-button" type="button" data-close-modal="true">
+            ✕
+          </button>
+        </div>
+
+        <div class="summary-section">
+          <div class="summary-table" id="summary-table"></div>
+          <div class="summary-total" id="summary-total"></div>
+        </div>
+
+        <div class="summary-section">
+          <h3>Comprobante de pago</h3>
+          <label class="upload-field">
+            Adjunta una imagen (JPG o PNG)
+            <input
+              type="file"
+              id="receipt-file"
+              accept="image/png, image/jpeg"
+            />
+            <span class="upload-hint" id="receipt-name">
+              Ningún archivo seleccionado
+            </span>
+          </label>
+          <label class="field">
+            Número de celular (opcional)
+            <input
+              type="text"
+              id="receipt-phone"
+              placeholder="Ej: 5551234567"
+            />
+          </label>
+        </div>
+
+        <p id="payment-error" class="status status-error"></p>
+        <p id="payment-success" class="status status-success"></p>
+
+        <div class="summary-actions">
+          <button class="secondary-link button" type="button" data-close-modal="true">
+            Volver
+          </button>
+          <button class="primary-link button" id="confirm-purchase" type="button">
+            Generar boletos
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-client.js"></script>
+    <script src="menu.js"></script>
+    <script src="compra-boletos.js"></script>
+  </body>
+</html>

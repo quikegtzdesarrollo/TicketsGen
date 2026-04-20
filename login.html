@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TicketGen | Login</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <button class="icon-button menu-toggle" type="button" aria-label="Abrir menú">
+        ☰
+      </button>
+      <span class="brand">TicketGen</span>
+      <span class="login-indicator" id="login-indicator">
+        <span class="login-avatar" aria-hidden="true"></span>
+        <span class="login-name"></span>
+      </span>
+    </header>
+    <nav class="menu" id="menu">
+      <div class="menu-backdrop" data-close-menu="true"></div>
+      <div class="menu-panel">
+        <h2>Menú</h2>
+        <a href="index.html">Home</a>
+        <a href="mis-boletos.html">Boletos</a>
+        <a href="compra-boletos.html">Generación de boletos</a>
+        <a href="escanear-entrada.html">Escanear entrada</a>
+        <a href="escanear-salida.html">Escanear salida</a>
+        <button class="menu-logout" type="button">Cerrar sesión</button>
+      </div>
+    </nav>
+    <main class="page">
+      <section class="card">
+        <h1>Inicia sesión</h1>
+        <p class="subtitle">
+          Accede con tu cuenta de Google para administrar tus boletos.
+        </p>
+
+        <div
+          id="g_id_onload"
+          data-client_id="340133723892-9g0fm7h7508oiaap9svf95rce5ghme2c.apps.googleusercontent.com"
+          data-context="signin"
+          data-auto_prompt="false"
+          data-callback="handleCredentialResponse"
+        ></div>
+        <div
+          class="g_id_signin"
+          data-type="standard"
+          data-size="large"
+          data-theme="outline"
+          data-text="signin_with"
+          data-shape="pill"
+          data-logo_alignment="left"
+        ></div>
+
+        <p id="login-status" class="status"></p>
+
+        <a class="secondary-link" href="index.html">Volver al home</a>
+      </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-client.js"></script>
+    <script src="menu.js"></script>
+    <script src="login.js"></script>
+  </body>
+</html>
