@@ -6,6 +6,7 @@ const scanType = document.getElementById("scan-type");
 const scanPrice = document.getElementById("scan-price");
 
 let isProcessing = false;
+let qrReader = null;
 
 const setStatus = (message, type = "success") => {
   if (!scanStatus) {
@@ -30,6 +31,18 @@ const renderTicketInfo = (ticket) => {
     ticket?.price !== undefined && ticket?.price !== null
       ? `$${Number(ticket.price).toFixed(2)}`
       : "-";
+};
+
+const stopScanner = async () => {
+  if (!qrReader) {
+    return;
+  }
+  try {
+    await qrReader.stop();
+    qrReader.clear();
+  } catch (error) {
+    // ignore stop errors
+  }
 };
 
 const markTicketAsUsed = async (ticketCode) => {
@@ -74,6 +87,7 @@ const markTicketAsUsed = async (ticketCode) => {
 
   if (data.used && data.used_at) {
     setStatus(`Boleto ${ticketCode} validado.`);
+    await stopScanner();
   } else {
     setStatus("El boleto no pudo marcarse como usado.", "error");
   }
@@ -98,8 +112,8 @@ const onScanSuccess = (decodedText) => {
 const onScanFailure = () => {};
 
 const initScanner = () => {
-  const reader = new Html5Qrcode(readerContainerId);
-  reader
+  qrReader = new Html5Qrcode(readerContainerId);
+  qrReader
     .start(
       { facingMode: "environment" },
       {
