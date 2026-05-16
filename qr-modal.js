@@ -71,7 +71,7 @@ const renderQrCode = async (text) => {
     '<p class="helper">No se pudo generar el QR. Comprueba tu conexión y recarga la página.</p>';
 };
 
-const buildQrExportDataUrl = async () => {
+const buildModalExportDataUrl = async () => {
   if (window.TicketGenQrExport?.buildQrExportDataUrl && currentTicketId) {
     try {
       return await window.TicketGenQrExport.buildQrExportDataUrl(
@@ -149,7 +149,7 @@ const runDownload = async () => {
     downloadBtn.disabled = true;
   }
   try {
-    const dataUrl = await buildQrExportDataUrl();
+    const dataUrl = await buildModalExportDataUrl();
     if (!dataUrl) {
       alert("No se pudo generar la imagen del QR. Intenta de nuevo en un momento.");
       return;
@@ -176,7 +176,7 @@ const runShare = async () => {
     return;
   }
   try {
-    const dataUrl = await buildQrExportDataUrl();
+    const dataUrl = await buildModalExportDataUrl();
     if (!dataUrl) {
       alert("No se pudo generar la imagen del QR. Intenta de nuevo en un momento.");
       return;
