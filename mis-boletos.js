@@ -259,10 +259,40 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
+const cleanupOrderIfEmpty = async (orderId) => {
+  if (orderId == null) {
+    return;
+  }
+
+  const { count, error: countError } = await supabaseClient
+    .from("tickets")
+    .select("id", { count: "exact", head: true })
+    .eq("order_id", orderId);
+
+  if (countError || (count ?? 0) > 0) {
+    return;
+  }
+
+  await supabaseClient.from("payments").delete().eq("order_id", orderId);
+  await supabaseClient.from("orders").delete().eq("id", orderId);
+};
+
 const handleDeleteTicket = async (ticketCode) => {
   if (!confirm(`¿Eliminar el boleto ${ticketCode}?`)) {
     return;
   }
+
+  const { data: ticket, error: fetchError } = await supabaseClient
+    .from("tickets")
+    .select("ticket_code,order_id,attendee_id")
+    .eq("ticket_code", ticketCode)
+    .maybeSingle();
+
+  if (fetchError || !ticket) {
+    alert("No se encontró el boleto.");
+    return;
+  }
+
   const { error } = await supabaseClient
     .from("tickets")
     .delete()
@@ -272,5 +302,11 @@ const handleDeleteTicket = async (ticketCode) => {
     alert("No se pudo eliminar el boleto.");
     return;
   }
+
+  if (ticket.attendee_id) {
+    await supabaseClient.from("attendees").delete().eq("id", ticket.attendee_id);
+  }
+
+  await cleanupOrderIfEmpty(ticket.order_id);
   loadTickets();
 };

@@ -172,10 +172,19 @@ h1 {
 }
 
 .scanner-layout {
-  display: grid;
-  grid-template-columns: minmax(240px, 360px) 1fr;
-  gap: 20px;
-  align-items: start;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: stretch;
+}
+
+.scanner-column,
+.scanner-layout > .scanner-box {
+  order: 2;
+  max-width: 480px;
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .scanner-column {
@@ -183,6 +192,8 @@ h1 {
   flex-direction: column;
   gap: 12px;
   width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
 }
 
 .scanner-box {
@@ -197,9 +208,16 @@ h1 {
 }
 
 .scanner-info {
+  order: 1;
   display: flex;
   flex-direction: column;
   gap: 12px;
+  width: 100%;
+  position: sticky;
+  top: 72px;
+  z-index: 5;
+  padding-bottom: 8px;
+  background: #ffffff;
 }
 
 .scan-result {
@@ -240,12 +258,6 @@ h1 {
 
 .scan-person-name[hidden] {
   display: none;
-}
-
-@media (max-width: 720px) {
-  .scanner-layout {
-    grid-template-columns: 1fr;
-  }
 }
 
 .button {

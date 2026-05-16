@@ -21,6 +21,14 @@ const renderSummary = (title, tickets, totalSpent, lastTicket) => {
   `;
 };
 
+const attendeeDisplayName = (ticket) => {
+  const attendees = ticket?.attendees;
+  if (Array.isArray(attendees)) {
+    return attendees[0]?.full_name?.trim() || "";
+  }
+  return attendees?.full_name?.trim() || "";
+};
+
 const loadSummary = async () => {
   if (!summaryContainer) {
     return;
@@ -29,7 +37,7 @@ const loadSummary = async () => {
   const currentUser = getCurrentUser();
   if (!currentUser) {
     summaryContainer.innerHTML =
-      "<p class=\"helper\">Inicia sesión para ver tu resumen.</p>";
+      '<p class="helper">Inicia sesión para ver tu resumen.</p>';
     return;
   }
 
@@ -46,51 +54,35 @@ const loadSummary = async () => {
     return;
   }
 
-  const { count, error } = await supabaseClient
+  const { data: ticketRows, error } = await supabaseClient
     .from("tickets")
-    .select("id,orders!inner(user_id)", { count: "exact", head: true })
-    .eq("orders.user_id", dbUser.id);
+    .select("price,ticket_code,created_at,attendees(full_name),orders!inner(user_id)")
+    .eq("orders.user_id", dbUser.id)
+    .order("created_at", { ascending: false });
 
   if (error) {
     summaryContainer.innerHTML =
-      "<p class=\"helper\">No se pudo cargar el resumen.</p>";
+      '<p class="helper">No se pudo cargar el resumen.</p>';
     return;
   }
 
-  const { data: orders, error: ordersError } = await supabaseClient
-    .from("orders")
-    .select("total_amount")
-    .eq("user_id", dbUser.id);
-
-  if (ordersError) {
-    summaryContainer.innerHTML =
-      "<p class=\"helper\">No se pudo cargar el resumen.</p>";
-    return;
-  }
-
-  const totalSpent = (orders ?? []).reduce(
-    (sum, order) => sum + Number(order.total_amount || 0),
-    0
-  );
-
-  const { data: lastTicketData } = await supabaseClient
-    .from("tickets")
-    .select("ticket_code,attendees(full_name),orders!inner(user_id)")
-    .eq("orders.user_id", dbUser.id)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  const lastTicketLabel = lastTicketData
-    ? `${lastTicketData.ticket_code} (${lastTicketData.attendees?.full_name ?? "Sin asignar"})`
+  const rows = ticketRows ?? [];
+  const totalSpent = rows.reduce((sum, ticket) => sum + Number(ticket.price || 0), 0);
+  const lastTicket = rows[0];
+  const lastTicketLabel = lastTicket
+    ? `${lastTicket.ticket_code} (${attendeeDisplayName(lastTicket) || "Sin asignar"})`
     : "";
 
   renderSummary(
     `Hola, ${currentUser.name || "invitado"}`,
-    count ?? 0,
+    rows.length,
     totalSpent.toFixed(2),
     lastTicketLabel
   );
 };
 
 loadSummary();
+
+window.addEventListener("pageshow", () => {
+  loadSummary();
+});

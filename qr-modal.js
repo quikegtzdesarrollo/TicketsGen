@@ -131,24 +131,32 @@ const handleQrButtonClick = (button) => {
   openModal(ticketId, owner, phone);
 };
 
+const isCloseModalClick = (target) => {
+  if (!(target instanceof Element) || !modal) {
+    return false;
+  }
+  const closeTrigger = target.closest("[data-close-modal='true']");
+  return Boolean(closeTrigger && modal.contains(closeTrigger));
+};
+
 document.addEventListener("click", (event) => {
   const target = event.target;
   if (!(target instanceof Element)) {
     return;
   }
+
+  if (modal?.classList.contains("modal-open") && isCloseModalClick(target)) {
+    event.preventDefault();
+    closeModal();
+    return;
+  }
+
   const button = target.closest(".qr-button");
   if (!button) {
     return;
   }
   event.preventDefault();
   handleQrButtonClick(button);
-});
-
-modal?.addEventListener("click", (event) => {
-  const target = event.target;
-  if (target instanceof Element && target.dataset.closeModal === "true") {
-    closeModal();
-  }
 });
 
 document.addEventListener("keydown", (event) => {
