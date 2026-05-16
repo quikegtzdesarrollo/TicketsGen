@@ -18,7 +18,22 @@ const getStoredUser = () => {
 
 const isAdminSession = () => {
   const user = getStoredUser();
-  return !!user && window.TicketGenConfig?.isAdminUser(user);
+  if (!user) {
+    return false;
+  }
+  return !!window.TicketGenConfig?.isAdminUser(user);
+};
+
+const setNavItemVisible = (element, visible) => {
+  if (!(element instanceof HTMLElement)) {
+    return;
+  }
+  if (visible) {
+    element.hidden = false;
+    element.style.removeProperty("display");
+  } else {
+    element.hidden = true;
+  }
 };
 
 const updateMenuVisibility = () => {
@@ -26,22 +41,18 @@ const updateMenuVisibility = () => {
   const isLoggedIn = !!user;
   const isAdmin = isAdminSession();
 
-  document.querySelectorAll("[data-auth='required']").forEach((link) => {
-    if (link instanceof HTMLElement) {
-      link.style.display = isLoggedIn && isAdmin ? "" : "none";
-    }
+  document.querySelectorAll("[data-admin-only]").forEach((link) => {
+    setNavItemVisible(link, isLoggedIn && isAdmin);
   });
 
-  document.querySelectorAll("[data-admin-only]").forEach((link) => {
-    if (link instanceof HTMLElement) {
-      link.style.display = isLoggedIn && isAdmin ? "" : "none";
+  document.querySelectorAll("[data-auth='required']").forEach((link) => {
+    if (!link.hasAttribute("data-admin-only")) {
+      setNavItemVisible(link, isLoggedIn);
     }
   });
 
   document.querySelectorAll(".menu-logout").forEach((button) => {
-    if (button instanceof HTMLElement) {
-      button.style.display = isLoggedIn ? "" : "none";
-    }
+    setNavItemVisible(button, isLoggedIn);
   });
 };
 
@@ -63,6 +74,7 @@ const updateLoginIndicator = () => {
   }
   const user = getStoredUser();
   if (user) {
+    window.TicketGenConfig?.persistSessionEmail(user);
     const name = user?.name || "Sesión activa";
     if (loginName) {
       loginName.textContent = name;
@@ -94,6 +106,7 @@ const updateLoginIndicator = () => {
 const handleLogout = () => {
   localStorage.removeItem("ticketgen_token");
   localStorage.removeItem("ticketgen_user");
+  localStorage.removeItem("ticketgen_email");
   updateLoginIndicator();
   window.location.href = "login.html";
 };
@@ -103,6 +116,10 @@ document.querySelectorAll(".menu-logout").forEach((button) => {
 });
 
 updateLoginIndicator();
+
+window.addEventListener("pageshow", () => {
+  updateLoginIndicator();
+});
 
 menu.addEventListener("click", (event) => {
   const target = event.target;
@@ -118,3 +135,4 @@ document.addEventListener("keydown", (event) => {
 });
 
 window.isAdminSession = isAdminSession;
+window.updateMenuVisibility = updateMenuVisibility;

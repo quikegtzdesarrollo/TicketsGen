@@ -9,6 +9,8 @@ const enforcePageAccess = () => {
     return;
   }
 
+  window.TicketGenConfig?.persistSessionEmail(user);
+
   if (!window.TicketGenConfig?.isAdminUser(user)) {
     window.location.replace("index.html");
   }

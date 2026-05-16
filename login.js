@@ -22,8 +22,13 @@ window.handleCredentialResponse = async (response) => {
   try {
     const payload = decodeJwtPayload(response.credential);
     const name = payload?.name || "tu cuenta";
+    const email = payload?.email || payload?.Email || "";
+    const userRecord = { ...(payload ?? {}), email };
     localStorage.setItem("ticketgen_token", response.credential);
-    localStorage.setItem("ticketgen_user", JSON.stringify(payload ?? {}));
+    localStorage.setItem("ticketgen_user", JSON.stringify(userRecord));
+    if (email) {
+      localStorage.setItem("ticketgen_email", email.trim().toLowerCase());
+    }
     await ensureUserInDb(payload ?? {});
     STATUS_ELEMENT.textContent = `¡Listo! Sesión iniciada para ${name}.`;
     STATUS_ELEMENT.style.color = "#2f7d32";

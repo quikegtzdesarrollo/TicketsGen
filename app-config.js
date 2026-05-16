@@ -3,10 +3,48 @@
  * Edita esta lista para autorizar o quitar administradores.
  */
 const TicketGenConfig = {
-  adminEmails: ["quikegtzdesarrollo@gmail.com", "jeny3007@gmail.com"],
+  adminEmails: [
+    "quikegtzdesarrollo@gmail.com",
+    "quikegtz@gmail.com",
+    "jeny3007@gmail.com",
+  ],
 
   normalizeEmail(email) {
     return String(email ?? "").trim().toLowerCase();
+  },
+
+  decodeJwtEmail(token) {
+    if (!token || typeof token !== "string" || !token.includes(".")) {
+      return "";
+    }
+    try {
+      const payloadPart = token.split(".")[1];
+      const payload = payloadPart.replace(/-/g, "+").replace(/_/g, "/");
+      const padded = payload.padEnd(
+        payload.length + ((4 - (payload.length % 4)) % 4),
+        "="
+      );
+      const json = atob(padded);
+      const data = JSON.parse(json);
+      return data?.email || data?.Email || "";
+    } catch (error) {
+      return "";
+    }
+  },
+
+  getSessionEmail(user) {
+    const fromUser = user?.email || user?.Email || "";
+    if (fromUser) {
+      return this.normalizeEmail(fromUser);
+    }
+
+    const storedEmail = localStorage.getItem("ticketgen_email");
+    if (storedEmail) {
+      return this.normalizeEmail(storedEmail);
+    }
+
+    const token = localStorage.getItem("ticketgen_token");
+    return this.normalizeEmail(this.decodeJwtEmail(token));
   },
 
   isAdminEmail(email) {
@@ -20,7 +58,17 @@ const TicketGenConfig = {
   },
 
   isAdminUser(user) {
-    return this.isAdminEmail(user?.email);
+    return this.isAdminEmail(this.getSessionEmail(user));
+  },
+
+  persistSessionEmail(user) {
+    const email = this.getSessionEmail(user);
+    if (email) {
+      localStorage.setItem("ticketgen_email", email);
+    } else {
+      localStorage.removeItem("ticketgen_email");
+    }
+    return email;
   },
 };
 
