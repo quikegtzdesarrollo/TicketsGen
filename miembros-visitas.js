@@ -47,6 +47,101 @@ const formatDisplayId = (id) => {
 
 const qrPayload = (id) => `MV-${id}`;
 
+const renderMemberModalQr = async (text) => {
+  const qrContainer = document.getElementById("qr-code");
+  if (!qrContainer || !text) {
+    return;
+  }
+
+  qrContainer.innerHTML = '<p class="helper">Generando QR...</p>';
+
+  if (window.TicketGenQrExport?.createQrCodeDataUrl) {
+    try {
+      const dataUrl = await window.TicketGenQrExport.createQrCodeDataUrl(text);
+      qrContainer.innerHTML = "";
+      const img = document.createElement("img");
+      img.src = dataUrl;
+      img.width = 180;
+      img.height = 180;
+      img.alt = "Código QR";
+      qrContainer.appendChild(img);
+      return;
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  if (typeof QRCode === "undefined") {
+    qrContainer.innerHTML = '<p class="helper">No se pudo cargar el generador QR.</p>';
+    return;
+  }
+
+  qrContainer.innerHTML = "";
+  // eslint-disable-next-line no-new
+  new QRCode(qrContainer, {
+    text,
+    width: 180,
+    height: 180,
+  });
+};
+
+const openMemberQrDirect = (ticketId, owner, phone) => {
+  const modalEl = document.getElementById("qr-modal");
+  const ticketLabel = document.getElementById("qr-ticket-id");
+  const ticketOwner = document.getElementById("qr-ticket-owner");
+  const ticketPhone = document.getElementById("qr-ticket-phone");
+
+  if (!modalEl || !ticketId) {
+    return;
+  }
+
+  if (ticketLabel) {
+    ticketLabel.textContent = `Registro: ${ticketId}`;
+  }
+  if (ticketOwner) {
+    ticketOwner.textContent = owner ? `Nombre: ${owner}` : "Nombre: Sin asignar";
+  }
+  if (ticketPhone) {
+    const phoneText = phone.trim();
+    ticketPhone.textContent = phoneText ? `Celular: ${phoneText}` : "";
+    ticketPhone.hidden = !phoneText;
+  }
+
+  modalEl.classList.add("modal-open");
+  modalEl.setAttribute("aria-hidden", "false");
+  renderMemberModalQr(ticketId);
+};
+
+const openMemberQrFromButton = (button) => {
+  if (!(button instanceof Element)) {
+    return;
+  }
+
+  const ticketId = button.getAttribute("data-ticket-id") ?? "";
+  const owner = button.getAttribute("data-ticket-owner") ?? "";
+  const phone = button.getAttribute("data-ticket-phone") ?? "";
+
+  if (!ticketId) {
+    return;
+  }
+
+  if (window.TicketGenQrModal?.open) {
+    window.TicketGenQrModal.open(ticketId, owner, phone);
+    return;
+  }
+
+  if (typeof window.openTicketQrModal === "function") {
+    window.openTicketQrModal(ticketId, owner, phone);
+    return;
+  }
+
+  openMemberQrDirect(ticketId, owner, phone);
+};
+
+window.showMemberQr = (button) => {
+  openMemberQrFromButton(button);
+};
+
 const digitsOnly = (value) => String(value ?? "").replace(/\D/g, "");
 
 const phoneMatchesFilter = (storedPhone, query) => {
@@ -305,6 +400,7 @@ const renderMembersRows = (rows) => {
           data-ticket-id="${escapeAttr(qrCode)}"
           data-ticket-owner="${escapeAttr(row.full_name)}"
           data-ticket-phone="${escapeAttr(row.reference_phone ?? "")}"
+          onclick="showMemberQr(this)"
         >
           <span aria-hidden="true">📱</span>
         </button>
@@ -594,14 +690,9 @@ membersTable?.addEventListener("click", (event) => {
   }
 
   const qrButton = target.closest(".qr-button");
-  if (qrButton instanceof HTMLButtonElement && typeof window.openTicketQrModal === "function") {
+  if (qrButton instanceof Element && membersTable.contains(qrButton)) {
     event.preventDefault();
-    event.stopPropagation();
-    window.openTicketQrModal(
-      qrButton.getAttribute("data-ticket-id") ?? "",
-      qrButton.getAttribute("data-ticket-owner") ?? "",
-      qrButton.getAttribute("data-ticket-phone") ?? ""
-    );
+    openMemberQrFromButton(qrButton);
     return;
   }
 

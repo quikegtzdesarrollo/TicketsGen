@@ -121,7 +121,7 @@ window.addEventListener("pageshow", () => {
   updateLoginIndicator();
 });
 
-menu.addEventListener("click", (event) => {
+menu?.addEventListener("click", (event) => {
   const target = event.target;
   if (target instanceof Element && target.dataset.closeMenu === "true") {
     closeMenu();

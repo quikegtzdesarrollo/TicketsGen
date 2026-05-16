@@ -121,7 +121,7 @@ const closeModal = () => {
 };
 
 const handleQrButtonClick = (button) => {
-  if (!(button instanceof HTMLButtonElement)) {
+  if (!(button instanceof Element)) {
     return;
   }
   const { ticketId, owner, phone } = readButtonData(button);
@@ -210,3 +210,7 @@ if (qrShare && !navigator.share) {
 }
 
 window.openTicketQrModal = openModal;
+window.TicketGenQrModal = {
+  open: openModal,
+  close: closeModal,
+};

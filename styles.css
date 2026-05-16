@@ -394,6 +394,10 @@ select {
   cursor: pointer;
   box-shadow: 0 6px 16px rgba(31, 42, 68, 0.12);
   font-size: 18px;
+  position: relative;
+  z-index: 2;
+  min-width: 44px;
+  min-height: 36px;
 }
 
 .receipt-button {
