@@ -1,4 +1,7 @@
 const modal = document.getElementById("qr-modal");
+const modalCard = modal?.querySelector(".modal-card");
+const modalBackdrop = modal?.querySelector(".modal-backdrop");
+const modalCloseBtn = document.getElementById("qr-modal-close");
 const ticketLabel = document.getElementById("qr-ticket-id");
 const ticketOwner = document.getElementById("qr-ticket-owner");
 const ticketPhone = document.getElementById("qr-ticket-phone");
@@ -66,6 +69,19 @@ const renderQrCode = async (text) => {
 };
 
 const buildQrExportDataUrl = async () => {
+  if (window.TicketGenQrExport?.buildQrExportDataUrl && currentTicketId) {
+    try {
+      return await window.TicketGenQrExport.buildQrExportDataUrl(
+        currentTicketId,
+        currentTicketId,
+        currentOwner,
+        currentPhone
+      );
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
   const qrDataUrl = getQrDataUrl();
   if (!qrDataUrl || !window.TicketGenQrExport) {
     return "";
@@ -131,23 +147,13 @@ const handleQrButtonClick = (button) => {
   openModal(ticketId, owner, phone);
 };
 
-const isCloseModalClick = (target) => {
-  if (!(target instanceof Element) || !modal) {
-    return false;
-  }
-  const closeTrigger = target.closest("[data-close-modal='true']");
-  return Boolean(closeTrigger && modal.contains(closeTrigger));
-};
-
 document.addEventListener("click", (event) => {
   const target = event.target;
   if (!(target instanceof Element)) {
     return;
   }
 
-  if (modal?.classList.contains("modal-open") && isCloseModalClick(target)) {
-    event.preventDefault();
-    closeModal();
+  if (modal?.contains(target)) {
     return;
   }
 
@@ -159,13 +165,30 @@ document.addEventListener("click", (event) => {
   handleQrButtonClick(button);
 });
 
+modal?.addEventListener("click", (event) => {
+  if (event.target === modalBackdrop) {
+    event.preventDefault();
+    closeModal();
+  }
+});
+
+modalCloseBtn?.addEventListener("click", (event) => {
+  event.preventDefault();
+  closeModal();
+});
+
+modalCard?.addEventListener("click", (event) => {
+  event.stopPropagation();
+});
+
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && modal?.classList.contains("modal-open")) {
     closeModal();
   }
 });
 
-qrDownload?.addEventListener("click", async () => {
+qrDownload?.addEventListener("click", async (event) => {
+  event.stopPropagation();
   if (!qrDownload) {
     return;
   }
@@ -173,6 +196,7 @@ qrDownload?.addEventListener("click", async () => {
   try {
     const dataUrl = await buildQrExportDataUrl();
     if (!dataUrl) {
+      alert("No se pudo generar la imagen del QR. Intenta de nuevo en un momento.");
       return;
     }
     const link = document.createElement("a");
@@ -187,17 +211,23 @@ qrDownload?.addEventListener("click", async () => {
   }
 });
 
-qrShare?.addEventListener("click", async () => {
+qrShare?.addEventListener("click", async (event) => {
+  event.stopPropagation();
   if (!navigator.share) {
+    alert("Tu navegador no admite compartir archivos. Usa «Descargar QR».");
     return;
   }
   try {
     const dataUrl = await buildQrExportDataUrl();
+    if (!dataUrl) {
+      alert("No se pudo generar la imagen del QR. Intenta de nuevo en un momento.");
+      return;
+    }
     const shareData = {
       title: "QR del boleto",
       text: `Boleto: ${currentTicketId}`,
     };
-    if (dataUrl && navigator.canShare) {
+    if (navigator.canShare) {
       const blob = await (await fetch(dataUrl)).blob();
       const file = new File([blob], `${currentTicketId || "qr-boleto"}.png`, {
         type: "image/png",
@@ -214,7 +244,7 @@ qrShare?.addEventListener("click", async () => {
 });
 
 if (qrShare && !navigator.share) {
-  qrShare.style.display = "none";
+  qrShare.hidden = true;
 }
 
 window.openTicketQrModal = openModal;
