@@ -38,9 +38,10 @@
           <div>
             <h1>Carga masiva</h1>
             <p class="subtitle">
-              Genera boletos en la pantalla Boletos desde un archivo .txt. Una línea por
-              persona: <strong>Nombre|Celular</strong> (celular opcional). Todos como
-              adultos, sin comprobante de pago.
+              Registros de <strong>Miembros o Visitas</strong>, separados de los boletos
+              de venta. Una línea por persona:
+              <strong>Nombre|Celular|Iglesia que invita</strong> (celular e iglesia
+              opcionales).
             </p>
           </div>
           <a class="secondary-link" href="index.html">Volver al home</a>
@@ -57,14 +58,14 @@
 
           <p class="helper bulk-format-example">
             Ejemplo de contenido:<br />
-            <code>Andrea López|5551234567</code><br />
-            <code>Carlos Ruiz|</code><br />
-            <code>Invitado sin celular</code>
+            <code>Andrea López|5551234567|Iglesia Central</code><br />
+            <code>Carlos Ruiz||</code> (sin celular ni iglesia)<br />
+            <code>María Soto|5550000000</code> (sin iglesia)
           </p>
 
           <p class="helper">
-            Cada registro crea un boleto adulto ($100) con pago pendiente (sin
-            comprobante). Origen: <strong>Miembros o Visitas</strong>.
+            Los datos se guardan en la tabla <strong>member_visits</strong>, no en la
+            pantalla Boletos.
           </p>
 
           <div class="bulk-actions">
