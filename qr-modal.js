@@ -10,6 +10,18 @@ let currentTicketId = "";
 let currentOwner = "";
 let currentPhone = "";
 
+const getQrDataUrl = () => {
+  if (!qrContainer) {
+    return "";
+  }
+  const canvas = qrContainer.querySelector("canvas");
+  if (canvas) {
+    return canvas.toDataURL("image/png");
+  }
+  const img = qrContainer.querySelector("img");
+  return img?.src || "";
+};
+
 const renderQrCode = (text) => {
   if (!qrContainer || !text) {
     return;
@@ -23,79 +35,17 @@ const renderQrCode = (text) => {
   });
 };
 
-const getQrDataUrl = () => {
-  if (!qrContainer) {
-    return "";
-  }
-  const canvas = qrContainer.querySelector("canvas");
-  if (canvas) {
-    return canvas.toDataURL("image/png");
-  }
-  const img = qrContainer.querySelector("img");
-  return img?.src || "";
-};
-
-const loadImage = (src) =>
-  new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error("No se pudo cargar la imagen del QR."));
-    img.src = src;
-  });
-
-const buildExportLines = () => {
-  const lines = [
-    `ID: ${currentTicketId || "-"}`,
-    `Nombre: ${currentOwner?.trim() || "Sin asignar"}`,
-  ];
-  const phone = currentPhone?.trim();
-  if (phone) {
-    lines.push(`Celular: ${phone}`);
-  }
-  return lines;
-};
-
 const buildQrExportDataUrl = async () => {
   const qrDataUrl = getQrDataUrl();
-  if (!qrDataUrl) {
+  if (!qrDataUrl || !window.TicketGenQrExport) {
     return "";
   }
-
-  const qrImg = await loadImage(qrDataUrl);
-  const padding = 20;
-  const lineHeight = 24;
-  const lines = buildExportLines();
-  const footerHeight = padding + lines.length * lineHeight + padding;
-  const qrSize = qrImg.width;
-  const width = Math.max(qrSize + padding * 2, 300);
-  const height = padding + qrSize + footerHeight;
-
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) {
-    return qrDataUrl;
-  }
-
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(0, 0, width, height);
-
-  const qrX = (width - qrSize) / 2;
-  ctx.drawImage(qrImg, qrX, padding, qrSize, qrSize);
-
-  ctx.fillStyle = "#1f2a44";
-  ctx.font = "600 15px system-ui, -apple-system, Segoe UI, sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "top";
-
-  let textY = padding + qrSize + padding;
-  for (const line of lines) {
-    ctx.fillText(line, width / 2, textY);
-    textY += lineHeight;
-  }
-
-  return canvas.toDataURL("image/png");
+  return window.TicketGenQrExport.composeQrExportImage(
+    qrDataUrl,
+    currentTicketId,
+    currentOwner,
+    currentPhone
+  );
 };
 
 const openModal = (ticketId, owner, phone) => {

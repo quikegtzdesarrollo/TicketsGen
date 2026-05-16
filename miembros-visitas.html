@@ -80,12 +80,31 @@
         <hr class="section-divider" />
 
         <h2 class="members-list-title">Registros guardados</h2>
+
+        <form class="filters members-filters" id="members-filters">
+          <label class="field">
+            Iglesia
+            <input type="text" name="iglesia" placeholder="Ej: Iglesia Central" />
+          </label>
+          <label class="field">
+            Teléfono
+            <input type="text" name="celular" placeholder="Ej: 5551234567" />
+          </label>
+          <button class="primary-link button" id="members-filter-btn" type="button">
+            Aplicar filtros
+          </button>
+          <button class="secondary-link button" id="members-export-zip" type="button" disabled>
+            Exportar QRs (ZIP)
+          </button>
+        </form>
+
         <p class="helper" id="members-status">Cargando registros...</p>
         <div class="table table-members" id="members-table">
           <div class="table-row table-head">
             <span>ID</span>
             <span>Nombre</span>
             <span>Teléfono</span>
+            <span>Iglesia</span>
             <span>QR</span>
             <span>Eliminar</span>
           </div>
@@ -128,7 +147,9 @@
     <script src="menu.js"></script>
     <script src="access-control.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <script src="qr-export.js"></script>
     <script src="qr-modal.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="miembros-visitas.js"></script>
   </body>
 </html>

@@ -11,9 +11,15 @@ const bulkPreviewCount = document.getElementById("bulk-preview-count");
 const bulkPreviewTable = document.getElementById("bulk-preview-table");
 const membersTable = document.getElementById("members-table");
 const membersStatus = document.getElementById("members-status");
+const membersFilterBtn = document.getElementById("members-filter-btn");
+const membersExportZipBtn = document.getElementById("members-export-zip");
+const churchInput = document.querySelector("input[name='iglesia']");
+const phoneInput = document.querySelector("input[name='celular']");
 
 let parsedRows = [];
 let parseIssues = [];
+let allMemberRows = [];
+let filteredMemberRows = [];
 
 const escapeHtml = (value) =>
   String(value ?? "")
@@ -37,6 +43,72 @@ const formatDisplayId = (id) => {
 };
 
 const qrPayload = (id) => `MV-${id}`;
+
+const digitsOnly = (value) => String(value ?? "").replace(/\D/g, "");
+
+const phoneMatchesFilter = (storedPhone, query) => {
+  const q = query.trim();
+  if (!q) {
+    return true;
+  }
+  const raw = storedPhone ?? "";
+  if (raw.includes(q)) {
+    return true;
+  }
+  const qDigits = digitsOnly(q);
+  if (!qDigits.length) {
+    return true;
+  }
+  const rawDigits = digitsOnly(raw);
+  if (!rawDigits.length) {
+    return false;
+  }
+  return rawDigits.includes(qDigits);
+};
+
+const churchMatchesFilter = (storedChurch, query) => {
+  const q = query.trim().toLowerCase();
+  if (!q) {
+    return true;
+  }
+  const raw = String(storedChurch ?? "").toLowerCase();
+  if (!raw) {
+    return false;
+  }
+  return raw.includes(q);
+};
+
+const safeFileName = (value) =>
+  String(value ?? "registro")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9._-]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 48) || "registro";
+
+const updateMembersStatus = () => {
+  if (!membersStatus) {
+    return;
+  }
+  const total = allMemberRows.length;
+  const shown = filteredMemberRows.length;
+  if (!total) {
+    membersStatus.textContent = "No hay registros guardados.";
+    return;
+  }
+  if (shown === total) {
+    membersStatus.textContent = `${total} registro(s).`;
+    return;
+  }
+  membersStatus.textContent = `${shown} de ${total} registro(s) (filtros activos).`;
+};
+
+const updateExportZipButton = () => {
+  if (!membersExportZipBtn) {
+    return;
+  }
+  membersExportZipBtn.disabled = !filteredMemberRows.length;
+};
 
 const setBulkStatus = (message, type = "success") => {
   if (!bulkStatus) {
@@ -132,19 +204,22 @@ const renderPreview = (rows) => {
   `;
 };
 
+const membersTableHeadHtml = `
+  <div class="table-row table-head">
+    <span>ID</span>
+    <span>Nombre</span>
+    <span>Teléfono</span>
+    <span>Iglesia</span>
+    <span>QR</span>
+    <span>Eliminar</span>
+  </div>
+`;
+
 const renderMembersHead = () => {
   if (!membersTable) {
     return;
   }
-  membersTable.innerHTML = `
-    <div class="table-row table-head">
-      <span>ID</span>
-      <span>Nombre</span>
-      <span>Teléfono</span>
-      <span>QR</span>
-      <span>Eliminar</span>
-    </div>
-  `;
+  membersTable.innerHTML = membersTableHeadHtml;
 };
 
 const renderMembersRows = (rows) => {
@@ -154,9 +229,8 @@ const renderMembersRows = (rows) => {
 
   if (!rows.length) {
     renderMembersHead();
-    if (membersStatus) {
-      membersStatus.textContent = "No hay registros guardados.";
-    }
+    updateMembersStatus();
+    updateExportZipButton();
     return;
   }
 
@@ -169,6 +243,7 @@ const renderMembersRows = (rows) => {
         <span title="${escapeAttr(row.id)}">${escapeHtml(displayId)}</span>
         <span>${escapeHtml(row.full_name)}</span>
         <span>${escapeHtml(row.reference_phone ?? "-")}</span>
+        <span>${escapeHtml(row.inviting_church ?? "-")}</span>
         <button
           class="qr-button"
           type="button"
@@ -192,20 +267,26 @@ const renderMembersRows = (rows) => {
     })
     .join("");
 
-  membersTable.innerHTML = `
-    <div class="table-row table-head">
-      <span>ID</span>
-      <span>Nombre</span>
-      <span>Teléfono</span>
-      <span>QR</span>
-      <span>Eliminar</span>
-    </div>
-    ${body}
-  `;
+  membersTable.innerHTML = `${membersTableHeadHtml}${body}`;
+  updateMembersStatus();
+  updateExportZipButton();
+};
 
-  if (membersStatus) {
-    membersStatus.textContent = `${rows.length} registro(s).`;
-  }
+const applyMemberFilters = () => {
+  const churchFilter = churchInput?.value ?? "";
+  const phoneFilter = phoneInput?.value ?? "";
+
+  filteredMemberRows = allMemberRows.filter((row) => {
+    if (!churchMatchesFilter(row.inviting_church, churchFilter)) {
+      return false;
+    }
+    if (!phoneMatchesFilter(row.reference_phone, phoneFilter)) {
+      return false;
+    }
+    return true;
+  });
+
+  renderMembersRows(filteredMemberRows);
 };
 
 const loadMemberVisits = async () => {
@@ -221,14 +302,81 @@ const loadMemberVisits = async () => {
 
   if (error) {
     console.error(error);
+    allMemberRows = [];
+    filteredMemberRows = [];
     renderMembersHead();
     if (membersStatus) {
       membersStatus.textContent = "No se pudieron cargar los registros.";
     }
+    updateExportZipButton();
     return;
   }
 
-  renderMembersRows(data ?? []);
+  allMemberRows = data ?? [];
+  applyMemberFilters();
+};
+
+const handleExportQrZip = async () => {
+  if (!filteredMemberRows.length) {
+    alert("No hay registros en pantalla para exportar.");
+    return;
+  }
+  if (typeof JSZip === "undefined" || !window.TicketGenQrExport) {
+    alert("No se pudo cargar la herramienta de exportación.");
+    return;
+  }
+
+  const total = filteredMemberRows.length;
+  if (membersExportZipBtn) {
+    membersExportZipBtn.disabled = true;
+  }
+  if (membersStatus) {
+    membersStatus.textContent = `Generando ${total} QR(s)...`;
+  }
+
+  try {
+    const zip = new JSZip();
+    for (let index = 0; index < filteredMemberRows.length; index += 1) {
+      const row = filteredMemberRows[index];
+      const ticketId = qrPayload(row.id);
+      const dataUrl = await window.TicketGenQrExport.buildQrExportDataUrl(
+        ticketId,
+        ticketId,
+        row.full_name,
+        row.reference_phone ?? ""
+      );
+      if (!dataUrl) {
+        continue;
+      }
+      const base64 = dataUrl.split(",")[1];
+      const fileName = `${formatDisplayId(row.id)}-${safeFileName(row.full_name)}.png`;
+      zip.file(fileName, base64, { base64: true });
+
+      if (membersStatus) {
+        membersStatus.textContent = `Generando QR ${index + 1} de ${total}...`;
+      }
+    }
+
+    if (!Object.keys(zip.files).length) {
+      alert("No se generaron imágenes QR.");
+      return;
+    }
+
+    const stamp = new Date().toISOString().slice(0, 10);
+    const blob = await zip.generateAsync({ type: "blob" });
+    const link = document.createElement("a");
+    const objectUrl = URL.createObjectURL(blob);
+    link.href = objectUrl;
+    link.download = `miembros-visitas-qr-${stamp}.zip`;
+    link.click();
+    URL.revokeObjectURL(objectUrl);
+  } catch (error) {
+    console.error(error);
+    alert("No se pudo generar el archivo ZIP.");
+  } finally {
+    updateMembersStatus();
+    updateExportZipButton();
+  }
 };
 
 const handleDeleteMember = async (id, name) => {
@@ -392,6 +540,19 @@ membersTable?.addEventListener("click", (event) => {
   if (deleteButton instanceof HTMLButtonElement) {
     handleDeleteMember(deleteButton.dataset.memberId, deleteButton.dataset.memberName);
   }
+});
+
+membersFilterBtn?.addEventListener("click", () => {
+  applyMemberFilters();
+});
+
+document.getElementById("members-filters")?.addEventListener("submit", (event) => {
+  event.preventDefault();
+  applyMemberFilters();
+});
+
+membersExportZipBtn?.addEventListener("click", () => {
+  handleExportQrZip();
 });
 
 loadMemberVisits();

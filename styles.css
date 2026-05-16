@@ -377,7 +377,11 @@ input[type="password"] {
 }
 
 .table-members .table-row {
-  grid-template-columns: 0.7fr 1.4fr 1fr 0.45fr 0.85fr;
+  grid-template-columns: 0.65fr 1.2fr 0.9fr 1fr 0.4fr 0.75fr;
+}
+
+.members-filters {
+  margin-top: 4px;
 }
 
 .qr-button {
