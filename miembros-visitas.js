@@ -15,6 +15,15 @@ const membersFilterBtn = document.getElementById("members-filter-btn");
 const membersExportZipBtn = document.getElementById("members-export-zip");
 const churchSelect = document.getElementById("church-filter");
 const phoneInput = document.querySelector("input[name='celular']");
+const memberAddOpenBtn = document.getElementById("member-add-open");
+const memberAddModal = document.getElementById("member-add-modal");
+const memberAddForm = document.getElementById("member-add-form");
+const memberAddName = document.getElementById("member-add-name");
+const memberAddPhone = document.getElementById("member-add-phone");
+const memberAddChurch = document.getElementById("member-add-church");
+const memberAddError = document.getElementById("member-add-error");
+const memberAddSubmit = document.getElementById("member-add-submit");
+const memberChurchSuggestions = document.getElementById("member-church-suggestions");
 
 const CHURCH_FILTER_NONE = "__none__";
 
@@ -185,6 +194,111 @@ const setParseErrors = (messages) => {
   bulkErrors.textContent = messages.join(" ");
 };
 
+const buildMemberRecord = (fullName, referencePhone, invitingChurch) => ({
+  full_name: fullName.trim(),
+  reference_phone: referencePhone?.trim() || null,
+  inviting_church: invitingChurch?.trim() || null,
+  record_type: RECORD_TYPE,
+});
+
+const setMemberAddError = (message) => {
+  if (!memberAddError) {
+    return;
+  }
+  if (!message) {
+    memberAddError.textContent = "";
+    memberAddError.hidden = true;
+    return;
+  }
+  memberAddError.textContent = message;
+  memberAddError.hidden = false;
+};
+
+const populateMemberChurchSuggestions = () => {
+  if (!memberChurchSuggestions) {
+    return;
+  }
+  const { churches } = getUniqueChurches(allMemberRows);
+  memberChurchSuggestions.innerHTML = churches
+    .map((church) => `<option value="${escapeAttr(church)}"></option>`)
+    .join("");
+};
+
+const openMemberAddModal = () => {
+  if (!memberAddModal) {
+    return;
+  }
+  setMemberAddError("");
+  if (memberAddForm) {
+    memberAddForm.reset();
+  }
+  populateMemberChurchSuggestions();
+  memberAddModal.classList.add("modal-open");
+  memberAddModal.setAttribute("aria-hidden", "false");
+  memberAddName?.focus();
+};
+
+const closeMemberAddModal = () => {
+  if (!memberAddModal) {
+    return;
+  }
+  memberAddModal.classList.remove("modal-open");
+  memberAddModal.setAttribute("aria-hidden", "true");
+  setMemberAddError("");
+};
+
+const handleMemberAddSubmit = async (event) => {
+  event.preventDefault();
+
+  const fullName = memberAddName?.value?.trim() ?? "";
+  const referencePhone = memberAddPhone?.value?.trim() ?? "";
+  const invitingChurch = memberAddChurch?.value?.trim() ?? "";
+
+  if (!fullName) {
+    setMemberAddError("El nombre es obligatorio.");
+    memberAddName?.focus();
+    return;
+  }
+
+  const currentUser = getCurrentUser();
+  if (!currentUser) {
+    setMemberAddError("Inicia sesión para agregar registros.");
+    return;
+  }
+
+  if (memberAddSubmit instanceof HTMLButtonElement) {
+    memberAddSubmit.disabled = true;
+  }
+  setMemberAddError("");
+
+  try {
+    const row = buildMemberRecord(fullName, referencePhone, invitingChurch);
+    const { error } = await supabaseClient.from("member_visits").insert([row]);
+    if (error) {
+      throw error;
+    }
+    closeMemberAddModal();
+    await loadMemberVisits();
+    if (membersStatus) {
+      membersStatus.textContent = `Registro de ${fullName} guardado correctamente.`;
+    }
+  } catch (error) {
+    console.error(error);
+    const message = String(error?.message ?? "");
+    const hint =
+      error?.code === "PGRST205" || message.includes("member_visits")
+        ? " Ejecuta sql/member_visits.sql en Supabase."
+        : message.includes("inviting_church")
+          ? " Agrega la columna inviting_church (ver sql/member_visits.sql)."
+          : "";
+    setMemberAddError(`No se pudo guardar el registro.${hint}`);
+  } finally {
+    if (memberAddSubmit instanceof HTMLButtonElement) {
+      memberAddSubmit.disabled = false;
+    }
+  }
+};
+
 const parseBulkText = (text) => {
   const rows = [];
   const issues = [];
@@ -207,12 +321,7 @@ const parseBulkText = (text) => {
       return;
     }
 
-    rows.push({
-      full_name: fullName,
-      reference_phone: referencePhone || null,
-      inviting_church: invitingChurch || null,
-      record_type: RECORD_TYPE,
-    });
+    rows.push(buildMemberRecord(fullName, referencePhone, invitingChurch));
   });
 
   return { rows, issues };
@@ -629,6 +738,31 @@ document.getElementById("members-filters")?.addEventListener("submit", (event) =
 
 membersExportZipBtn?.addEventListener("click", () => {
   handleExportQrZip();
+});
+
+memberAddOpenBtn?.addEventListener("click", () => {
+  openMemberAddModal();
+});
+
+memberAddForm?.addEventListener("submit", (event) => {
+  void handleMemberAddSubmit(event);
+});
+
+memberAddModal?.addEventListener("click", (event) => {
+  const target = event.target;
+  if (!(target instanceof Element)) {
+    return;
+  }
+  if (target.dataset.closeMemberAdd === "true") {
+    event.preventDefault();
+    closeMemberAddModal();
+  }
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && memberAddModal?.classList.contains("modal-open")) {
+    closeMemberAddModal();
+  }
 });
 
 loadMemberVisits();

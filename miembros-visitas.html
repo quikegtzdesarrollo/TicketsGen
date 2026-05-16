@@ -38,7 +38,7 @@
           <div>
             <h1>Miembros y Visitas</h1>
             <p class="subtitle">
-              Carga registros desde archivo .txt (separados de boletos de venta). Formato:
+              Carga registros desde archivo .txt o agrégalos uno a uno. Formato en archivo:
               <strong>Nombre|Celular|Iglesia que invita</strong> (celular e iglesia opcionales).
             </p>
           </div>
@@ -79,7 +79,12 @@
 
         <hr class="section-divider" />
 
-        <h2 class="members-list-title">Registros guardados</h2>
+        <div class="members-list-header">
+          <h2 class="members-list-title">Registros guardados</h2>
+          <button class="primary-link button" id="member-add-open" type="button">
+            Agregar registro
+          </button>
+        </div>
 
         <form class="filters members-filters" id="members-filters">
           <label class="field">
@@ -113,6 +118,69 @@
         </div>
       </section>
     </main>
+
+    <div class="modal" id="member-add-modal" aria-hidden="true" role="dialog">
+      <div class="modal-backdrop" data-close-member-add="true"></div>
+      <div class="modal-card" role="document">
+        <div class="modal-header">
+          <h2>Agregar registro</h2>
+          <button
+            class="icon-button"
+            type="button"
+            aria-label="Cerrar"
+            data-close-member-add="true"
+          >
+            ✕
+          </button>
+        </div>
+        <p class="helper">
+          Registra un miembro o visita sin archivo .txt. El celular y la iglesia son opcionales.
+        </p>
+        <form id="member-add-form" class="member-add-form">
+          <label class="field">
+            Nombre completo
+            <input
+              type="text"
+              id="member-add-name"
+              name="nombre"
+              required
+              autocomplete="name"
+              placeholder="Ej: Andrea López"
+            />
+          </label>
+          <label class="field">
+            Celular (opcional)
+            <input
+              type="text"
+              id="member-add-phone"
+              name="celular"
+              autocomplete="tel"
+              placeholder="Ej: 5551234567"
+            />
+          </label>
+          <label class="field">
+            Iglesia que invita (opcional)
+            <input
+              type="text"
+              id="member-add-church"
+              name="iglesia"
+              list="member-church-suggestions"
+              placeholder="Ej: Iglesia Central"
+            />
+          </label>
+          <datalist id="member-church-suggestions"></datalist>
+          <p id="member-add-error" class="status status-error" hidden></p>
+          <div class="summary-actions">
+            <button class="secondary-link button" type="button" data-close-member-add="true">
+              Cancelar
+            </button>
+            <button class="primary-link button" id="member-add-submit" type="submit">
+              Guardar registro
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
 
     <div class="modal" id="qr-modal" aria-hidden="true" role="dialog">
       <div class="modal-backdrop" data-close-modal="true"></div>
@@ -161,4 +229,3 @@
     <script src="miembros-visitas.js"></script>
   </body>
 </html>
-

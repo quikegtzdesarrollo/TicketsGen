@@ -463,9 +463,37 @@ select {
   border-top: 1px solid #e2e8f0;
 }
 
+.members-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.members-list-header .members-list-title {
+  margin: 0;
+}
+
 .members-list-title {
   margin: 0 0 8px;
   font-size: 18px;
+}
+
+.member-add-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 12px;
+}
+
+.member-add-form .summary-actions {
+  margin-top: 4px;
+}
+
+#member-add-modal.modal-open {
+  z-index: 50;
 }
 
 .table-members .table-row {
