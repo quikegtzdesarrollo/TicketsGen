@@ -463,6 +463,10 @@ select {
   border-top: 1px solid #e2e8f0;
 }
 
+.members-church-summary {
+  margin-bottom: 24px;
+}
+
 .members-list-header {
   display: flex;
   align-items: center;

@@ -24,6 +24,7 @@ const memberAddChurch = document.getElementById("member-add-church");
 const memberAddError = document.getElementById("member-add-error");
 const memberAddSubmit = document.getElementById("member-add-submit");
 const memberChurchSuggestions = document.getElementById("member-church-suggestions");
+const membersChurchSummary = document.getElementById("members-church-summary");
 
 const CHURCH_FILTER_NONE = "__none__";
 
@@ -87,6 +88,77 @@ const churchMatchesFilter = (storedChurch, selected) => {
     return !String(storedChurch ?? "").trim();
   }
   return String(storedChurch ?? "") === value;
+};
+
+const churchLabel = (value) => {
+  const text = String(value ?? "").trim();
+  return text || "(Sin iglesia)";
+};
+
+const aggregateMembersByChurch = (rows) => {
+  const map = new Map();
+  for (const row of rows ?? []) {
+    const label = churchLabel(row.inviting_church);
+    map.set(label, (map.get(label) || 0) + 1);
+  }
+  return [...map.entries()]
+    .map(([label, count]) => ({ label, count }))
+    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, "es"));
+};
+
+const renderMembersChurchSummary = () => {
+  if (!membersChurchSummary) {
+    return;
+  }
+
+  const total = allMemberRows.length;
+  const churchRows = aggregateMembersByChurch(allMemberRows);
+
+  if (!total) {
+    membersChurchSummary.innerHTML = `
+      <div class="home-chart">
+        <h3 class="home-chart-title">Resumen por iglesia</h3>
+        <p class="helper">Aún no hay registros guardados.</p>
+      </div>
+    `;
+    return;
+  }
+
+  if (!churchRows.length) {
+    membersChurchSummary.innerHTML = `
+      <div class="home-chart">
+        <h3 class="home-chart-title">Resumen por iglesia</h3>
+        <p class="helper">${total} registro(s) en total.</p>
+      </div>
+    `;
+    return;
+  }
+
+  const maxCount = Math.max(...churchRows.map((row) => row.count), 1);
+  const bars = churchRows
+    .map((row) => {
+      const width = Math.max(6, Math.round((row.count / maxCount) * 100));
+      return `
+        <div class="chart-row">
+          <span class="chart-label" title="${escapeAttr(row.label)}">${escapeHtml(row.label)}</span>
+          <div class="chart-bar-wrap">
+            <span class="chart-bar" style="width: ${width}%"></span>
+          </div>
+          <span class="chart-meta">${row.count} registro(s)</span>
+        </div>
+      `;
+    })
+    .join("");
+
+  membersChurchSummary.innerHTML = `
+    <div class="home-chart">
+      <h3 class="home-chart-title">Resumen por iglesia</h3>
+      <p class="helper home-chart-hint">
+        ${total} registro(s) en total · cantidad por iglesia que invita.
+      </p>
+      <div class="chart-bars">${bars}</div>
+    </div>
+  `;
 };
 
 const getUniqueChurches = (rows) => {
@@ -468,6 +540,7 @@ const loadMemberVisits = async () => {
     allMemberRows = [];
     filteredMemberRows = [];
     renderMembersHead();
+    renderMembersChurchSummary();
     if (membersStatus) {
       membersStatus.textContent = "No se pudieron cargar los registros.";
     }
@@ -478,6 +551,7 @@ const loadMemberVisits = async () => {
 
   allMemberRows = data ?? [];
   populateChurchSelect();
+  renderMembersChurchSummary();
   applyMemberFilters();
 };
 
