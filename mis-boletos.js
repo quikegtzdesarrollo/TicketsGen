@@ -5,6 +5,39 @@ const receiptModal = document.getElementById("receipt-modal");
 const receiptImage = document.getElementById("receipt-image");
 const receiptLink = document.getElementById("receipt-link");
 
+const paymentPhoneFromOrder = (orders) => {
+  let payments = orders?.payments;
+  if (!payments) {
+    return null;
+  }
+  if (!Array.isArray(payments)) {
+    payments = [payments];
+  }
+  if (!payments.length) {
+    return null;
+  }
+  const withPhone = payments.find((p) => String(p?.reference_phone ?? "").trim());
+  return withPhone?.reference_phone ?? payments[0]?.reference_phone ?? null;
+};
+
+const digitsOnly = (value) => String(value ?? "").replace(/\D/g, "");
+
+const phoneMatchesFilter = (storedPhone, query) => {
+  const q = query.trim();
+  if (!q) {
+    return true;
+  }
+  const raw = storedPhone ?? "";
+  if (raw.includes(q)) {
+    return true;
+  }
+  const qDigits = digitsOnly(q);
+  if (!qDigits.length) {
+    return false;
+  }
+  return digitsOnly(raw).includes(qDigits);
+};
+
 const renderRows = (tickets) => {
   const rowsHtml = tickets
     .map(
@@ -58,29 +91,24 @@ const applyClientFilter = (tickets) => {
   const endDate = endInput?.value ? new Date(endInput.value) : null;
   const phoneFilter = phoneInput?.value.trim() ?? "";
 
-  if (!startDate && !endDate) {
-    return tickets;
-  }
-
   return tickets.filter((ticket) => {
-    const createdAt = ticket.created_at ? new Date(ticket.created_at) : null;
-    if (!createdAt) {
-      return true;
-    }
-    if (startDate && createdAt < startDate) {
-      return false;
-    }
-    if (endDate) {
-      const endOfDay = new Date(endDate);
-      endOfDay.setHours(23, 59, 59, 999);
-      if (createdAt > endOfDay) {
-        return false;
+    if (startDate || endDate) {
+      const createdAt = ticket.created_at ? new Date(ticket.created_at) : null;
+      if (createdAt) {
+        if (startDate && createdAt < startDate) {
+          return false;
+        }
+        if (endDate) {
+          const endOfDay = new Date(endDate);
+          endOfDay.setHours(23, 59, 59, 999);
+          if (createdAt > endOfDay) {
+            return false;
+          }
+        }
       }
     }
-    if (phoneFilter) {
-      return ticket.reference_phone?.includes(phoneFilter) ?? false;
-    }
-    return true;
+
+    return phoneMatchesFilter(ticket.reference_phone, phoneFilter);
   });
 };
 
@@ -115,7 +143,7 @@ const loadTickets = async () => {
   const normalized = (data ?? []).map((ticket) => ({
     ...ticket,
     receipt_base64: ticket.orders?.payments?.[0]?.receipt_base64 ?? null,
-    reference_phone: ticket.orders?.payments?.[0]?.reference_phone ?? null,
+    reference_phone: paymentPhoneFromOrder(ticket.orders),
   }));
   const filtered = applyClientFilter(normalized);
   if (!filtered.length) {
