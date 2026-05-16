@@ -297,11 +297,13 @@ input[type="date"] {
 }
 
 input[type="text"],
-input[type="password"] {
+input[type="password"],
+select {
   padding: 8px 10px;
   border: 1px solid #d6dbe6;
   border-radius: 10px;
   font-family: inherit;
+  background: #ffffff;
 }
 
 .input-error {

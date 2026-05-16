@@ -13,8 +13,10 @@ const membersTable = document.getElementById("members-table");
 const membersStatus = document.getElementById("members-status");
 const membersFilterBtn = document.getElementById("members-filter-btn");
 const membersExportZipBtn = document.getElementById("members-export-zip");
-const churchInput = document.querySelector("input[name='iglesia']");
+const churchSelect = document.getElementById("church-filter");
 const phoneInput = document.querySelector("input[name='celular']");
+
+const CHURCH_FILTER_NONE = "__none__";
 
 let parsedRows = [];
 let parseIssues = [];
@@ -66,16 +68,67 @@ const phoneMatchesFilter = (storedPhone, query) => {
   return rawDigits.includes(qDigits);
 };
 
-const churchMatchesFilter = (storedChurch, query) => {
-  const q = query.trim().toLowerCase();
-  if (!q) {
+const churchMatchesFilter = (storedChurch, selected) => {
+  const value = selected ?? "";
+  if (!value) {
     return true;
   }
-  const raw = String(storedChurch ?? "").toLowerCase();
-  if (!raw) {
-    return false;
+  if (value === CHURCH_FILTER_NONE) {
+    return !String(storedChurch ?? "").trim();
   }
-  return raw.includes(q);
+  return String(storedChurch ?? "") === value;
+};
+
+const getUniqueChurches = (rows) => {
+  const churches = new Set();
+  let hasEmpty = false;
+
+  for (const row of rows) {
+    const church = String(row.inviting_church ?? "").trim();
+    if (church) {
+      churches.add(church);
+    } else {
+      hasEmpty = true;
+    }
+  }
+
+  return {
+    churches: [...churches].sort((a, b) => a.localeCompare(b, "es")),
+    hasEmpty,
+  };
+};
+
+const populateChurchSelect = () => {
+  if (!churchSelect) {
+    return;
+  }
+
+  const previous = churchSelect.value;
+  const { churches, hasEmpty } = getUniqueChurches(allMemberRows);
+
+  churchSelect.innerHTML = "";
+
+  const allOption = document.createElement("option");
+  allOption.value = "";
+  allOption.textContent = "Todas las iglesias";
+  churchSelect.appendChild(allOption);
+
+  if (hasEmpty) {
+    const noneOption = document.createElement("option");
+    noneOption.value = CHURCH_FILTER_NONE;
+    noneOption.textContent = "(Sin iglesia)";
+    churchSelect.appendChild(noneOption);
+  }
+
+  for (const church of churches) {
+    const option = document.createElement("option");
+    option.value = church;
+    option.textContent = church;
+    churchSelect.appendChild(option);
+  }
+
+  const validValues = [...churchSelect.options].map((option) => option.value);
+  churchSelect.value = validValues.includes(previous) ? previous : "";
 };
 
 const safeFileName = (value) =>
@@ -273,7 +326,7 @@ const renderMembersRows = (rows) => {
 };
 
 const applyMemberFilters = () => {
-  const churchFilter = churchInput?.value ?? "";
+  const churchFilter = churchSelect?.value ?? "";
   const phoneFilter = phoneInput?.value ?? "";
 
   filteredMemberRows = allMemberRows.filter((row) => {
@@ -308,11 +361,13 @@ const loadMemberVisits = async () => {
     if (membersStatus) {
       membersStatus.textContent = "No se pudieron cargar los registros.";
     }
+    populateChurchSelect();
     updateExportZipButton();
     return;
   }
 
   allMemberRows = data ?? [];
+  populateChurchSelect();
   applyMemberFilters();
 };
 
@@ -543,6 +598,10 @@ membersTable?.addEventListener("click", (event) => {
 });
 
 membersFilterBtn?.addEventListener("click", () => {
+  applyMemberFilters();
+});
+
+churchSelect?.addEventListener("change", () => {
   applyMemberFilters();
 });
 
