@@ -5,19 +5,25 @@ const receiptModal = document.getElementById("receipt-modal");
 const receiptImage = document.getElementById("receipt-image");
 const receiptLink = document.getElementById("receipt-link");
 
-const paymentPhoneFromOrder = (orders) => {
-  let payments = orders?.payments;
-  if (!payments) {
-    return null;
+const paymentsByOrderId = (paymentRows) => {
+  const map = {};
+  for (const row of paymentRows ?? []) {
+    const oid = row?.order_id;
+    if (oid == null) {
+      continue;
+    }
+    const prev = map[oid];
+    if (!prev) {
+      map[oid] = row;
+      continue;
+    }
+    const prevPhone = String(prev.reference_phone ?? "").trim();
+    const nextPhone = String(row.reference_phone ?? "").trim();
+    if (!prevPhone && nextPhone) {
+      map[oid] = row;
+    }
   }
-  if (!Array.isArray(payments)) {
-    payments = [payments];
-  }
-  if (!payments.length) {
-    return null;
-  }
-  const withPhone = payments.find((p) => String(p?.reference_phone ?? "").trim());
-  return withPhone?.reference_phone ?? payments[0]?.reference_phone ?? null;
+  return map;
 };
 
 const digitsOnly = (value) => String(value ?? "").replace(/\D/g, "");
@@ -126,10 +132,10 @@ const loadTickets = async () => {
     return;
   }
 
-  const { data, error } = await supabaseClient
+  const { data: ticketRows, error } = await supabaseClient
     .from("tickets")
     .select(
-      "ticket_code,created_at,attendees(full_name,is_child),orders(user_id,payments(receipt_base64,reference_phone))"
+      "ticket_code,created_at,order_id,attendees(full_name,is_child),orders!inner(user_id)"
     )
     .eq("orders.user_id", dbUser.id)
     .order("created_at", { ascending: false });
@@ -140,11 +146,32 @@ const loadTickets = async () => {
     return;
   }
 
-  const normalized = (data ?? []).map((ticket) => ({
-    ...ticket,
-    receipt_base64: ticket.orders?.payments?.[0]?.receipt_base64 ?? null,
-    reference_phone: paymentPhoneFromOrder(ticket.orders),
-  }));
+  const orderIds = [
+    ...new Set((ticketRows ?? []).map((t) => t.order_id).filter((id) => id != null)),
+  ];
+
+  let payMap = {};
+  if (orderIds.length > 0) {
+    const { data: paymentRows, error: paymentsError } = await supabaseClient
+      .from("payments")
+      .select("order_id,reference_phone,receipt_base64")
+      .in("order_id", orderIds);
+
+    if (paymentsError) {
+      console.error(paymentsError);
+    } else {
+      payMap = paymentsByOrderId(paymentRows);
+    }
+  }
+
+  const normalized = (ticketRows ?? []).map((ticket) => {
+    const pay = payMap[ticket.order_id];
+    return {
+      ...ticket,
+      receipt_base64: pay?.receipt_base64 ?? null,
+      reference_phone: pay?.reference_phone ?? null,
+    };
+  });
   const filtered = applyClientFilter(normalized);
   if (!filtered.length) {
     ticketsStatus.textContent = "No hay boletos para mostrar.";
