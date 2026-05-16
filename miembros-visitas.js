@@ -593,6 +593,21 @@ membersTable?.addEventListener("click", (event) => {
     return;
   }
 
+  const qrButton = target.closest(".qr-button");
+  if (qrButton instanceof Element && membersTable.contains(qrButton)) {
+    event.preventDefault();
+    const ticketId = qrButton.getAttribute("data-ticket-id") ?? "";
+    const owner = qrButton.getAttribute("data-ticket-owner") ?? "";
+    const phone = qrButton.getAttribute("data-ticket-phone") ?? "";
+    const open = window.TicketGenQrModal?.open ?? window.openTicketQrModal;
+    if (ticketId && typeof open === "function") {
+      open(ticketId, owner, phone);
+    } else {
+      console.error("TicketGen: qr-modal.js no cargó correctamente.");
+    }
+    return;
+  }
+
   const deleteButton = target.closest(".delete-button");
   if (deleteButton instanceof HTMLButtonElement) {
     handleDeleteMember(deleteButton.dataset.memberId, deleteButton.dataset.memberName);

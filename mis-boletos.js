@@ -227,9 +227,33 @@ const closeReceiptModal = () => {
   receiptModal.setAttribute("aria-hidden", "true");
 };
 
+const openQrFromButton = (button) => {
+  if (!(button instanceof Element)) {
+    return;
+  }
+  const ticketId = button.getAttribute("data-ticket-id") ?? "";
+  const owner = button.getAttribute("data-ticket-owner") ?? "";
+  const phone = button.getAttribute("data-ticket-phone") ?? "";
+  if (!ticketId) {
+    return;
+  }
+  const open = window.TicketGenQrModal?.open ?? window.openTicketQrModal;
+  if (typeof open === "function") {
+    open(ticketId, owner, phone);
+    return;
+  }
+  console.error("TicketGen: qr-modal.js no cargó correctamente.");
+};
+
 document.addEventListener("click", (event) => {
   const target = event.target;
   if (!(target instanceof Element)) {
+    return;
+  }
+  const qrButton = target.closest(".qr-button");
+  if (qrButton) {
+    event.preventDefault();
+    openQrFromButton(qrButton);
     return;
   }
   const receiptButton = target.closest(".receipt-button");
