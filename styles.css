@@ -362,7 +362,7 @@ input[type="password"] {
 }
 
 .table-bulk .table-row {
-  grid-template-columns: 1.4fr 1fr 1fr;
+  grid-template-columns: 1fr 1.2fr 1fr 1fr;
 }
 
 .qr-button {

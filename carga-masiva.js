@@ -1,5 +1,5 @@
-const RECORD_TYPE = "Miembros o Visitas";
-const BATCH_SIZE = 100;
+const ADULT_PRICE = 100;
+const PAYMENT_METHOD = "miembros_visitas";
 
 const bulkFileInput = document.getElementById("bulk-file");
 const bulkFileName = document.getElementById("bulk-file-name");
@@ -19,6 +19,8 @@ const escapeHtml = (value) =>
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+
+const generateTicketCode = (stamp, index) => `TG-${stamp}-B${index + 1}`;
 
 const setStatus = (message, type = "success") => {
   if (!bulkStatus) {
@@ -45,6 +47,7 @@ const parseBulkText = (text) => {
   const rows = [];
   const issues = [];
   const lines = text.split(/\r?\n/);
+  const stamp = Date.now().toString().slice(-6);
 
   lines.forEach((line, index) => {
     const lineNumber = index + 1;
@@ -65,7 +68,9 @@ const parseBulkText = (text) => {
     rows.push({
       full_name: fullName,
       reference_phone: referencePhone || null,
-      record_type: RECORD_TYPE,
+      ticket_code: generateTicketCode(stamp, rows.length),
+      price: ADULT_PRICE,
+      is_child: false,
     });
   });
 
@@ -84,16 +89,17 @@ const renderPreview = (rows) => {
   }
 
   bulkPreviewWrap.hidden = false;
-  bulkPreviewCount.textContent = `${rows.length} registro(s) listos para cargar.`;
+  bulkPreviewCount.textContent = `${rows.length} boleto(s) adulto(s) listos para generar.`;
 
   const body = rows
     .slice(0, 50)
     .map(
       (row) => `
       <div class="table-row">
+        <span>${escapeHtml(row.ticket_code)}</span>
         <span>${escapeHtml(row.full_name)}</span>
         <span>${escapeHtml(row.reference_phone ?? "-")}</span>
-        <span>${escapeHtml(row.record_type)}</span>
+        <span>Adulto · $${row.price}</span>
       </div>
     `
     )
@@ -106,9 +112,10 @@ const renderPreview = (rows) => {
 
   bulkPreviewTable.innerHTML = `
     <div class="table-row table-head">
+      <span>ID boleto</span>
       <span>Nombre</span>
       <span>Celular</span>
-      <span>Tipo</span>
+      <span>Clasificación</span>
     </div>
     ${body}
     ${more}
@@ -166,7 +173,9 @@ const handleFileChange = async () => {
       return;
     }
 
-    setStatus(`${parsedRows.length} registro(s) listos. Pulsa «Cargar registros».`);
+    setStatus(
+      `${parsedRows.length} boleto(s) listos. Se crearán como adultos sin comprobante. Pulsa «Cargar registros».`
+    );
     if (bulkUploadButton) {
       bulkUploadButton.disabled = false;
     }
@@ -179,17 +188,67 @@ const handleFileChange = async () => {
   }
 };
 
-const insertBatches = async (rows) => {
-  let inserted = 0;
-  for (let i = 0; i < rows.length; i += BATCH_SIZE) {
-    const chunk = rows.slice(i, i + BATCH_SIZE);
-    const { error } = await supabaseClient.from("member_visits").insert(chunk);
-    if (error) {
-      throw error;
-    }
-    inserted += chunk.length;
+const createTicketBundle = async (row, dbUserId) => {
+  const { data: order, error: orderError } = await supabaseClient
+    .from("orders")
+    .insert({
+      user_id: dbUserId,
+      total_amount: row.price,
+      currency: "MXN",
+    })
+    .select("id")
+    .single();
+
+  if (orderError || !order?.id) {
+    throw orderError ?? new Error("No se pudo crear la orden.");
   }
-  return inserted;
+
+  const { data: attendee, error: attendeeError } = await supabaseClient
+    .from("attendees")
+    .insert({
+      full_name: row.full_name,
+      is_child: false,
+    })
+    .select("id")
+    .single();
+
+  if (attendeeError || !attendee?.id) {
+    throw attendeeError ?? new Error("No se pudo registrar el asistente.");
+  }
+
+  const { error: ticketError } = await supabaseClient.from("tickets").insert({
+    order_id: order.id,
+    attendee_id: attendee.id,
+    ticket_code: row.ticket_code,
+    price: row.price,
+  });
+
+  if (ticketError) {
+    throw ticketError;
+  }
+
+  const { error: paymentError } = await supabaseClient.from("payments").insert({
+    order_id: order.id,
+    amount: row.price,
+    currency: "MXN",
+    status: "no_pagado",
+    method: PAYMENT_METHOD,
+    receipt_base64: null,
+    reference_phone: row.reference_phone,
+  });
+
+  if (paymentError) {
+    throw paymentError;
+  }
+};
+
+const createBulkTickets = async (rows, dbUserId) => {
+  let created = 0;
+  for (const row of rows) {
+    await createTicketBundle(row, dbUserId);
+    created += 1;
+  }
+  return created;
 };
 
 const handleUpload = async () => {
@@ -204,15 +263,23 @@ const handleUpload = async () => {
     return;
   }
 
+  const { data: dbUser, error: userError } = await ensureUserInDb(currentUser);
+  if (!dbUser?.id) {
+    setStatus(`No se pudo validar el usuario. ${userError ?? ""}`.trim(), "error");
+    return;
+  }
+
   if (bulkUploadButton) {
     bulkUploadButton.disabled = true;
   }
-  setStatus("Cargando registros...");
+  setStatus("Generando boletos...");
   setParseErrors(parseIssues);
 
   try {
-    const inserted = await insertBatches(parsedRows);
-    setStatus(`${inserted} registro(s) guardados como «${RECORD_TYPE}».`);
+    const created = await createBulkTickets(parsedRows, dbUser.id);
+    setStatus(
+      `${created} boleto(s) creados (adultos, sin comprobante). Aparecerán en la pantalla Boletos y en Boletos sin pagar.`
+    );
     parsedRows = [];
     if (bulkFileInput) {
       bulkFileInput.value = "";
@@ -223,11 +290,7 @@ const handleUpload = async () => {
     renderPreview([]);
   } catch (error) {
     console.error(error);
-    const hint =
-      error?.code === "PGRST205" || String(error?.message ?? "").includes("member_visits")
-        ? " Crea la tabla member_visits en Supabase (archivo sql/member_visits.sql)."
-        : "";
-    setStatus(`No se pudieron guardar los registros.${hint}`, "error");
+    setStatus("No se pudieron generar todos los boletos. Revisa la consola.", "error");
   } finally {
     if (bulkUploadButton) {
       bulkUploadButton.disabled = !parsedRows.length;
