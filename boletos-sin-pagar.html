@@ -43,16 +43,49 @@
           <a class="secondary-link" href="index.html">Volver al home</a>
         </header>
 
-        <p class="helper" id="unpaid-status">Cargando boletos...</p>
+        <div class="unpaid-list-header">
+          <p class="helper" id="unpaid-status">Cargando boletos...</p>
+          <button class="secondary-link button" id="unpaid-export-zip" type="button" disabled>
+            Exportar QRs (ZIP)
+          </button>
+        </div>
         <div class="table table-unpaid" id="unpaid-table">
           <div class="table-row table-head">
             <span>ID del boleto</span>
             <span>Celular</span>
+            <span>QR</span>
             <span>Pagar</span>
           </div>
         </div>
       </section>
     </main>
+
+    <div class="modal" id="qr-modal" aria-hidden="true" role="dialog">
+      <div class="modal-backdrop" data-close-modal="true"></div>
+      <div class="modal-card" role="document">
+        <div class="modal-header">
+          <h2>QR del boleto</h2>
+          <button class="icon-button" type="button" data-close-modal="true">
+            ✕
+          </button>
+        </div>
+        <div class="qr-placeholder">
+          <div class="qr-box" id="qr-code"></div>
+          <p id="qr-ticket-id" class="helper"></p>
+          <p id="qr-ticket-owner" class="helper"></p>
+          <p id="qr-ticket-phone" class="helper"></p>
+          <p class="helper qr-export-hint">La descarga incluye QR, ID, nombre y celular en una sola imagen.</p>
+          <div class="qr-actions">
+            <button class="secondary-link button" id="qr-download" type="button">
+              Descargar QR
+            </button>
+            <button class="primary-link button" id="qr-share" type="button">
+              Compartir
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <div class="modal" id="pay-modal" aria-hidden="true" role="dialog">
       <div class="modal-backdrop" data-close-pay-modal="true"></div>
@@ -107,6 +140,10 @@
     <script src="app-config.js"></script>
     <script src="menu.js"></script>
     <script src="access-control.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <script src="qr-export.js"></script>
+    <script src="qr-modal.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="boletos-sin-pagar.js"></script>
   </body>
 </html>

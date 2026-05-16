@@ -8,10 +8,50 @@ const payReceiptPhone = document.getElementById("pay-receipt-phone");
 const payModalError = document.getElementById("pay-modal-error");
 const payModalSuccess = document.getElementById("pay-modal-success");
 const confirmPayButton = document.getElementById("confirm-pay");
+const unpaidExportZipBtn = document.getElementById("unpaid-export-zip");
 
 const UNPAID_STATUSES = ["no_pagado"];
 
 let activePayment = null;
+let unpaidRows = [];
+
+const escapeAttr = (value) =>
+  String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;");
+
+const unpaidTableHeadHtml = `
+  <div class="table-row table-head">
+    <span>ID del boleto</span>
+    <span>Celular</span>
+    <span>QR</span>
+    <span>Pagar</span>
+  </div>
+`;
+
+const attendeeDisplayName = (ticket) => {
+  const attendees = ticket?.attendees;
+  if (Array.isArray(attendees)) {
+    return attendees[0]?.full_name?.trim() || "";
+  }
+  return attendees?.full_name?.trim() || "";
+};
+
+const safeFileName = (value) =>
+  String(value ?? "boleto")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9._-]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 48) || "boleto";
+
+const updateExportZipButton = () => {
+  if (!unpaidExportZipBtn) {
+    return;
+  }
+  unpaidExportZipBtn.disabled = !unpaidRows.length;
+};
 
 const paymentsByOrderId = (paymentRows) => {
   const map = {};
@@ -45,13 +85,7 @@ const validatePayReceipt = () => {
 };
 
 const renderUnpaidHead = () => {
-  unpaidTable.innerHTML = `
-    <div class="table-row table-head">
-      <span>ID del boleto</span>
-      <span>Celular</span>
-      <span>Pagar</span>
-    </div>
-  `;
+  unpaidTable.innerHTML = unpaidTableHeadHtml;
 };
 
 const renderRows = (rows) => {
@@ -62,12 +96,22 @@ const renderRows = (rows) => {
         <span>${row.ticket_code}</span>
         <span>${row.reference_phone ?? "-"}</span>
         <button
+          class="qr-button"
+          type="button"
+          aria-label="Abrir QR"
+          data-ticket-id="${escapeAttr(row.ticket_code)}"
+          data-ticket-owner="${escapeAttr(row.owner_name ?? "")}"
+          data-ticket-phone="${escapeAttr(row.reference_phone ?? "")}"
+        >
+          <span aria-hidden="true">📱</span>
+        </button>
+        <button
           class="primary-link button pay-button"
           type="button"
-          data-ticket-code="${row.ticket_code}"
-          data-payment-id="${row.payment_id}"
-          data-order-id="${row.order_id}"
-          data-reference-phone="${row.reference_phone ?? ""}"
+          data-ticket-code="${escapeAttr(row.ticket_code)}"
+          data-payment-id="${escapeAttr(row.payment_id)}"
+          data-order-id="${escapeAttr(row.order_id)}"
+          data-reference-phone="${escapeAttr(row.reference_phone ?? "")}"
         >
           Pagar
         </button>
@@ -76,14 +120,25 @@ const renderRows = (rows) => {
     )
     .join("");
 
-  unpaidTable.innerHTML = `
-    <div class="table-row table-head">
-      <span>ID del boleto</span>
-      <span>Celular</span>
-      <span>Pagar</span>
-    </div>
-    ${rowsHtml}
-  `;
+  unpaidTable.innerHTML = `${unpaidTableHeadHtml}${rowsHtml}`;
+};
+
+const openQrFromButton = (button) => {
+  if (!(button instanceof Element)) {
+    return;
+  }
+  const ticketId = button.getAttribute("data-ticket-id") ?? "";
+  const owner = button.getAttribute("data-ticket-owner") ?? "";
+  const phone = button.getAttribute("data-ticket-phone") ?? "";
+  if (!ticketId) {
+    return;
+  }
+  const open = window.TicketGenQrModal?.open ?? window.openTicketQrModal;
+  if (typeof open === "function") {
+    open(ticketId, owner, phone);
+    return;
+  }
+  console.error("TicketGen: qr-modal.js no cargó correctamente.");
 };
 
 const openPayModal = (button) => {
@@ -135,9 +190,78 @@ const closePayModal = () => {
   activePayment = null;
 };
 
+const handleExportQrZip = async () => {
+  if (!unpaidRows.length) {
+    alert("No hay boletos en pantalla para exportar.");
+    return;
+  }
+  if (typeof JSZip === "undefined" || !window.TicketGenQrExport) {
+    alert("No se pudo cargar la herramienta de exportación.");
+    return;
+  }
+
+  const total = unpaidRows.length;
+  if (unpaidExportZipBtn) {
+    unpaidExportZipBtn.disabled = true;
+  }
+  if (unpaidStatus) {
+    unpaidStatus.textContent = `Generando ${total} QR(s)...`;
+  }
+
+  try {
+    const zip = new JSZip();
+    for (let index = 0; index < unpaidRows.length; index += 1) {
+      const row = unpaidRows[index];
+      const ticketId = row.ticket_code;
+      const dataUrl = await window.TicketGenQrExport.buildQrExportDataUrl(
+        ticketId,
+        ticketId,
+        row.owner_name ?? "",
+        row.reference_phone ?? ""
+      );
+      if (!dataUrl) {
+        continue;
+      }
+      const base64 = dataUrl.split(",")[1];
+      const fileName = `${safeFileName(ticketId)}-${safeFileName(row.owner_name || "sin-asignar")}.png`;
+      zip.file(fileName, base64, { base64: true });
+
+      if (unpaidStatus) {
+        unpaidStatus.textContent = `Generando QR ${index + 1} de ${total}...`;
+      }
+    }
+
+    if (!Object.keys(zip.files).length) {
+      alert("No se generaron imágenes QR.");
+      return;
+    }
+
+    const stamp = new Date().toISOString().slice(0, 10);
+    const blob = await zip.generateAsync({ type: "blob" });
+    const link = document.createElement("a");
+    const objectUrl = URL.createObjectURL(blob);
+    link.href = objectUrl;
+    link.download = `boletos-sin-pagar-qr-${stamp}.zip`;
+    link.click();
+    URL.revokeObjectURL(objectUrl);
+  } catch (error) {
+    console.error(error);
+    alert("No se pudo generar el archivo ZIP.");
+  } finally {
+    if (unpaidRows.length) {
+      unpaidStatus.textContent = `${unpaidRows.length} boleto(s) sin pagar.`;
+    } else {
+      unpaidStatus.textContent = "No hay boletos sin pagar.";
+    }
+    updateExportZipButton();
+  }
+};
+
 const loadUnpaidTickets = async () => {
   const currentUser = getCurrentUser();
   if (!currentUser) {
+    unpaidRows = [];
+    updateExportZipButton();
     unpaidStatus.textContent = "Inicia sesión para ver boletos sin pagar.";
     renderUnpaidHead();
     return;
@@ -151,6 +275,8 @@ const loadUnpaidTickets = async () => {
     .in("status", UNPAID_STATUSES);
 
   if (paymentsError) {
+    unpaidRows = [];
+    updateExportZipButton();
     unpaidStatus.textContent = "Error al cargar pagos pendientes.";
     console.error(paymentsError);
     renderUnpaidHead();
@@ -159,6 +285,8 @@ const loadUnpaidTickets = async () => {
 
   const payments = unpaidPayments ?? [];
   if (!payments.length) {
+    unpaidRows = [];
+    updateExportZipButton();
     unpaidStatus.textContent = "No hay boletos sin pagar.";
     renderUnpaidHead();
     return;
@@ -169,18 +297,20 @@ const loadUnpaidTickets = async () => {
 
   const { data: ticketRows, error: ticketsError } = await supabaseClient
     .from("tickets")
-    .select("ticket_code,order_id,created_at")
+    .select("ticket_code,order_id,created_at,attendees(full_name)")
     .in("order_id", orderIds)
     .order("created_at", { ascending: false });
 
   if (ticketsError) {
+    unpaidRows = [];
+    updateExportZipButton();
     unpaidStatus.textContent = "Error al cargar boletos.";
     console.error(ticketsError);
     renderUnpaidHead();
     return;
   }
 
-  const rows = (ticketRows ?? [])
+  unpaidRows = (ticketRows ?? [])
     .map((ticket) => {
       const pay = payMap[String(ticket.order_id)];
       if (!pay) {
@@ -191,18 +321,21 @@ const loadUnpaidTickets = async () => {
         order_id: ticket.order_id,
         payment_id: pay.id,
         reference_phone: pay.reference_phone,
+        owner_name: attendeeDisplayName(ticket),
       };
     })
     .filter(Boolean);
 
-  if (!rows.length) {
+  if (!unpaidRows.length) {
+    updateExportZipButton();
     unpaidStatus.textContent = "No hay boletos sin pagar.";
     renderUnpaidHead();
     return;
   }
 
-  unpaidStatus.textContent = "";
-  renderRows(rows);
+  unpaidStatus.textContent = `${unpaidRows.length} boleto(s) sin pagar.`;
+  updateExportZipButton();
+  renderRows(unpaidRows);
 };
 
 const submitPayment = async () => {
@@ -271,6 +404,13 @@ document.addEventListener("click", (event) => {
     return;
   }
 
+  const qrButton = target.closest(".qr-button");
+  if (qrButton) {
+    event.preventDefault();
+    openQrFromButton(qrButton);
+    return;
+  }
+
   const payButton = target.closest(".pay-button");
   if (payButton instanceof HTMLButtonElement) {
     openPayModal(payButton);
@@ -286,6 +426,10 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && payModal?.classList.contains("modal-open")) {
     closePayModal();
   }
+});
+
+unpaidExportZipBtn?.addEventListener("click", () => {
+  void handleExportQrZip();
 });
 
 loadUnpaidTickets();

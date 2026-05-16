@@ -423,7 +423,7 @@ select {
 }
 
 .table-unpaid .table-row {
-  grid-template-columns: 1.4fr 1fr 0.9fr;
+  grid-template-columns: 1.4fr 1fr 0.4fr 0.9fr;
 }
 
 .bulk-upload-section {
@@ -473,6 +473,19 @@ select {
 
 .tickets-summary-stats {
   justify-content: flex-start;
+}
+
+.unpaid-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.unpaid-list-header .helper {
+  margin: 0;
 }
 
 .members-list-header {
