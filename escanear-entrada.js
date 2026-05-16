@@ -10,6 +10,139 @@ const scanAnotherButton = document.getElementById("scan-another");
 const MEMBER_QR_PREFIX = "MV-";
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const SALE_TICKET_SELECT =
+  "ticket_code,price,used,used_at,attendees(full_name,is_child)";
+const memberVisitSelect =
+  "id,full_name,reference_phone,inviting_church,record_type,used,used_at";
+
+const escapeIlike = (value) =>
+  String(value ?? "").replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+
+const normalizeMemberSearchToken = (query) => {
+  let token = String(query ?? "").trim().toUpperCase();
+  if (token.startsWith(MEMBER_QR_PREFIX)) {
+    token = token.slice(MEMBER_QR_PREFIX.length);
+  } else if (token.startsWith("MV")) {
+    token = token.slice(2);
+  }
+  return token.replace(/-/g, "");
+};
+
+const memberMatchesToken = (row, token) => {
+  if (!token) {
+    return false;
+  }
+  const displayId = formatMemberDisplayId(row.id);
+  const compactId = String(row.id ?? "")
+    .replace(/-/g, "")
+    .toUpperCase();
+  const shortCode = `${MEMBER_QR_PREFIX}${displayId}`;
+  return (
+    displayId.includes(token) ||
+    compactId.includes(token) ||
+    shortCode.includes(token) ||
+    shortCode.replace(MEMBER_QR_PREFIX, "").includes(token)
+  );
+};
+
+const findSaleTicketByCode = async (code) => {
+  const trimmed = String(code ?? "").trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const { data: exactMatch, error: exactError } = await supabaseClient
+    .from("tickets")
+    .select(SALE_TICKET_SELECT)
+    .eq("ticket_code", trimmed)
+    .maybeSingle();
+
+  if (exactError) {
+    console.error(exactError);
+    return null;
+  }
+  if (exactMatch) {
+    return exactMatch;
+  }
+
+  const pattern = `%${escapeIlike(trimmed)}%`;
+  const { data: partialMatches, error: partialError } = await supabaseClient
+    .from("tickets")
+    .select(SALE_TICKET_SELECT)
+    .ilike("ticket_code", pattern)
+    .order("created_at", { ascending: false })
+    .limit(5);
+
+  if (partialError) {
+    console.error(partialError);
+    return null;
+  }
+
+  const rows = partialMatches ?? [];
+  if (!rows.length) {
+    return null;
+  }
+  if (rows.length === 1) {
+    return rows[0];
+  }
+
+  const normalized = trimmed.toUpperCase();
+  return (
+    rows.find((row) => String(row.ticket_code ?? "").toUpperCase() === normalized) ??
+    rows[0]
+  );
+};
+
+const findMemberVisitByCode = async (code) => {
+  const trimmed = String(code ?? "").trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const memberId = parseMemberVisitId(trimmed);
+  if (memberId) {
+    const { data, error } = await supabaseClient
+      .from("member_visits")
+      .select(memberVisitSelect)
+      .eq("id", memberId)
+      .maybeSingle();
+    if (error) {
+      console.error(error);
+      return null;
+    }
+    return data;
+  }
+
+  const token = normalizeMemberSearchToken(trimmed);
+  if (token.length < 2) {
+    return null;
+  }
+
+  const { data: rows, error } = await supabaseClient
+    .from("member_visits")
+    .select(memberVisitSelect)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error(error);
+    return null;
+  }
+
+  const matches = (rows ?? []).filter((row) => memberMatchesToken(row, token));
+  if (!matches.length) {
+    return null;
+  }
+  if (matches.length === 1) {
+    return matches[0];
+  }
+
+  const shortCode = trimmed.toUpperCase();
+  return (
+    matches.find(
+      (row) => `${MEMBER_QR_PREFIX}${formatMemberDisplayId(row.id)}` === shortCode
+    ) ?? matches[0]
+  );
+};
 
 let isProcessing = false;
 let qrReader = null;
@@ -195,33 +328,20 @@ const resetForAnotherEntry = async () => {
   }
 };
 
-const memberVisitSelect =
-  "id,full_name,reference_phone,inviting_church,record_type,used,used_at";
-
-const markMemberVisitAsUsed = async (memberId) => {
+const registerMemberEntry = async (existing) => {
   if (isProcessing) {
-    return;
+    return false;
   }
   isProcessing = true;
   setStatus("Validando registro de miembro o visita...");
 
-  const { data: existing, error: existingError } = await supabaseClient
-    .from("member_visits")
-    .select(memberVisitSelect)
-    .eq("id", memberId)
-    .single();
-
-  if (existingError || !existing) {
-    const message = String(existingError?.message ?? "");
-    const hint =
-      message.includes("used") || existingError?.code === "42703"
-        ? " Ejecuta sql/member_visits.sql en Supabase (columnas used y used_at)."
-        : "";
-    setStatus(`No se encontró el registro.${hint}`, "error");
+  if (!existing?.id) {
+    setStatus("No se encontró el registro.", "error");
     isProcessing = false;
-    return;
+    return false;
   }
 
+  const memberId = existing.id;
   const personName = existing.full_name?.trim() || "";
   const displayCode = `${MEMBER_QR_PREFIX}${formatMemberDisplayId(memberId)}`;
   renderMemberVisitInfo(existing);
@@ -234,7 +354,7 @@ const markMemberVisitAsUsed = async (memberId) => {
       "error"
     );
     isProcessing = false;
-    return;
+    return false;
   }
 
   const { data, error } = await supabaseClient
@@ -255,7 +375,7 @@ const markMemberVisitAsUsed = async (memberId) => {
           : "";
     setStatus(`No se pudo actualizar el registro.${hint}`, "error");
     isProcessing = false;
-    return;
+    return false;
   }
 
   renderMemberVisitInfo(data);
@@ -267,32 +387,29 @@ const markMemberVisitAsUsed = async (memberId) => {
         : `Registro ${displayCode} validado.`
     );
     await destroyScanner();
-  } else {
-    setStatus("El registro no pudo marcarse como usado.", "error");
+    isProcessing = false;
+    return true;
   }
 
+  setStatus("El registro no pudo marcarse como usado.", "error");
   isProcessing = false;
+  return false;
 };
 
-const markTicketAsUsed = async (ticketCode) => {
+const registerSaleEntry = async (existing) => {
   if (isProcessing) {
-    return;
+    return false;
   }
   isProcessing = true;
-  setStatus("Validando boleto...");
+  setStatus("Validando boleto de venta...");
 
-  const { data: existing, error: existingError } = await supabaseClient
-    .from("tickets")
-    .select("ticket_code,price,used,used_at,attendees(full_name,is_child)")
-    .eq("ticket_code", ticketCode)
-    .single();
-
-  if (existingError || !existing) {
+  if (!existing?.ticket_code) {
     setStatus("No se encontró el boleto.", "error");
     isProcessing = false;
-    return;
+    return false;
   }
 
+  const ticketCode = existing.ticket_code;
   const personName = attendeeDisplayName(existing);
   renderTicketInfo(existing);
 
@@ -304,20 +421,20 @@ const markTicketAsUsed = async (ticketCode) => {
       "error"
     );
     isProcessing = false;
-    return;
+    return false;
   }
 
   const { data, error } = await supabaseClient
     .from("tickets")
     .update({ used: true, used_at: new Date().toISOString() })
     .eq("ticket_code", ticketCode)
-    .select("ticket_code,price,used,used_at,attendees(full_name,is_child)")
+    .select(SALE_TICKET_SELECT)
     .single();
 
   if (error || !data) {
     setStatus("No se pudo actualizar el boleto.", "error");
     isProcessing = false;
-    return;
+    return false;
   }
 
   renderTicketInfo({ ...data, attendees: data.attendees ?? existing.attendees });
@@ -330,27 +447,71 @@ const markTicketAsUsed = async (ticketCode) => {
         : `Boleto ${ticketCode} validado.`
     );
     await destroyScanner();
-  } else {
-    setStatus("El boleto no pudo marcarse como usado.", "error");
+    isProcessing = false;
+    return true;
   }
 
+  setStatus("El boleto no pudo marcarse como usado.", "error");
   isProcessing = false;
+  return false;
 };
 
-const processScan = (decodedText) => {
+const processScan = async (decodedText) => {
   const code = decodedText.trim();
   if (!code) {
     setStatus("QR inválido.", "error");
     return;
   }
-
-  const memberId = parseMemberVisitId(code);
-  if (memberId) {
-    markMemberVisitAsUsed(memberId);
+  if (isProcessing) {
     return;
   }
 
-  markTicketAsUsed(code);
+  isProcessing = true;
+  setStatus("Buscando boleto de venta o registro de miembro/visita...");
+
+  try {
+    const preferMember = code.toUpperCase().startsWith(MEMBER_QR_PREFIX);
+    const lookups = preferMember
+      ? [
+          { kind: "member", find: () => findMemberVisitByCode(code) },
+          { kind: "sale", find: () => findSaleTicketByCode(code) },
+        ]
+      : [
+          { kind: "sale", find: () => findSaleTicketByCode(code) },
+          { kind: "member", find: () => findMemberVisitByCode(code) },
+        ];
+
+    for (const lookup of lookups) {
+      const record = await lookup.find();
+      if (!record) {
+        continue;
+      }
+
+      isProcessing = false;
+      if (lookup.kind === "member") {
+        const handled = await registerMemberEntry(record);
+        if (handled) {
+          return;
+        }
+        continue;
+      }
+
+      const handled = await registerSaleEntry(record);
+      if (handled) {
+        return;
+      }
+    }
+
+    setStatus(
+      "No se encontró el boleto de venta ni el registro de miembro/visita.",
+      "error"
+    );
+  } catch (error) {
+    console.error(error);
+    setStatus("Error al validar el código escaneado.", "error");
+  } finally {
+    isProcessing = false;
+  }
 };
 
 const onScanSuccess = (decodedText) => {
