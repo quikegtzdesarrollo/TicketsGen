@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TicketGen | Boletos sin pagar</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <button class="icon-button menu-toggle" type="button" aria-label="Abrir menú">
+        ☰
+      </button>
+      <span class="brand">TicketGen</span>
+      <span class="login-indicator" id="login-indicator">
+        <span class="login-avatar" aria-hidden="true"></span>
+        <span class="login-name"></span>
+      </span>
+    </header>
+    <nav class="menu" id="menu">
+      <div class="menu-backdrop" data-close-menu="true"></div>
+      <div class="menu-panel">
+        <h2>Menú</h2>
+        <a href="index.html">Home</a>
+        <a href="mis-boletos.html" data-auth="required">Boletos</a>
+        <a href="boletos-sin-pagar.html" data-auth="required">Boletos sin pagar</a>
+        <a href="compra-boletos.html">Generación de boletos</a>
+        <a href="escanear-entrada.html">Escanear entrada</a>
+        <a href="escanear-salida.html">Escanear salida</a>
+        <button class="menu-logout" type="button">Cerrar sesión</button>
+      </div>
+    </nav>
+    <main class="page">
+      <section class="card card-wide">
+        <header class="section-header">
+          <div>
+            <h1>Boletos sin pagar</h1>
+            <p class="subtitle">
+              Boletos con pago pendiente. Registra el comprobante para marcarlos como pagados.
+            </p>
+          </div>
+          <a class="secondary-link" href="index.html">Volver al home</a>
+        </header>
+
+        <p class="helper" id="unpaid-status">Cargando boletos...</p>
+        <div class="table table-unpaid" id="unpaid-table">
+          <div class="table-row table-head">
+            <span>ID del boleto</span>
+            <span>Celular</span>
+            <span>Pagar</span>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <div class="modal" id="pay-modal" aria-hidden="true" role="dialog">
+      <div class="modal-backdrop" data-close-pay-modal="true"></div>
+      <div class="modal-card modal-card-wide" role="document">
+        <div class="modal-header">
+          <h2>Comprobante de pago</h2>
+          <button class="icon-button" type="button" data-close-pay-modal="true">
+            ✕
+          </button>
+        </div>
+
+        <p class="helper" id="pay-modal-ticket"></p>
+
+        <div class="summary-section">
+          <label class="upload-field">
+            Adjunta una imagen (JPG o PNG)
+            <input
+              type="file"
+              id="pay-receipt-file"
+              accept="image/png, image/jpeg"
+            />
+            <span class="upload-hint" id="pay-receipt-name">
+              Ningún archivo seleccionado
+            </span>
+          </label>
+          <label class="field">
+            Número de celular (opcional)
+            <input
+              type="text"
+              id="pay-receipt-phone"
+              placeholder="Ej: 5551234567"
+            />
+          </label>
+        </div>
+
+        <p id="pay-modal-error" class="status status-error"></p>
+        <p id="pay-modal-success" class="status status-success"></p>
+
+        <div class="summary-actions">
+          <button class="secondary-link button" type="button" data-close-pay-modal="true">
+            Cancelar
+          </button>
+          <button class="primary-link button" id="confirm-pay" type="button">
+            Marcar como pagado
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-client.js"></script>
+    <script src="menu.js"></script>
+    <script src="boletos-sin-pagar.js"></script>
+  </body>
+</html>
