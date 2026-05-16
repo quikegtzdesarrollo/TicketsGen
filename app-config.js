@@ -3,7 +3,11 @@
  * Edita esta lista para autorizar o quitar administradores.
  */
 const TicketGenConfig = {
-  adminEmails: ["quikegtzdesarrollo@gmail.com", "jeny3007@gmail.com"],
+  adminEmails: [
+    "quikegtzdesarrollo@gmail.com",
+    "jeny3007@gmail.com",
+    "ninfalozano11@gmail.com",
+  ],
 
   normalizeEmail(email) {
     return String(email ?? "").trim().toLowerCase();
