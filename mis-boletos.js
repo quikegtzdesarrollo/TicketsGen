@@ -72,14 +72,15 @@ const updateTicketsSummary = (shown, total) => {
     return;
   }
   if (total === 0) {
-    ticketsSummaryDetail.textContent = "No hay boletos registrados.";
+    ticketsSummaryDetail.textContent = "No hay boletos de venta registrados.";
     return;
   }
   if (shown === total) {
-    ticketsSummaryDetail.textContent = "Todos los boletos coinciden con los filtros actuales.";
+    ticketsSummaryDetail.textContent =
+      "Todos los boletos de venta coinciden con los filtros actuales.";
     return;
   }
-  ticketsSummaryDetail.textContent = `${shown} de ${total} boleto(s) con los filtros aplicados.`;
+  ticketsSummaryDetail.textContent = `${shown} de ${total} boleto(s) de venta con los filtros aplicados.`;
 };
 
 const renderRows = (tickets) => {
@@ -162,11 +163,11 @@ const loadTickets = async () => {
   if (!currentUser) {
     allTickets = [];
     updateTicketsSummary(0, 0);
-    ticketsStatus.textContent = "Inicia sesión para ver los boletos.";
+    ticketsStatus.textContent = "Inicia sesión para ver los boletos de venta.";
     return;
   }
 
-  ticketsStatus.textContent = "Cargando boletos...";
+  ticketsStatus.textContent = "Cargando boletos de venta...";
   if (ticketsSummaryDetail) {
     ticketsSummaryDetail.textContent = "Cargando...";
   }
@@ -179,7 +180,7 @@ const loadTickets = async () => {
   if (error) {
     allTickets = [];
     updateTicketsSummary(0, 0);
-    ticketsStatus.textContent = "Error al cargar boletos.";
+    ticketsStatus.textContent = "Error al cargar boletos de venta.";
     if (ticketsSummaryDetail) {
       ticketsSummaryDetail.textContent = "No se pudo cargar el resumen.";
     }
@@ -222,8 +223,8 @@ const loadTickets = async () => {
   if (!filtered.length) {
     ticketsStatus.textContent =
       allTickets.length > 0
-        ? "Ningún boleto coincide con los filtros. Vacía fechas y Celular o pulsa «Aplicar filtros» tras limpiar."
-        : "No hay boletos para mostrar.";
+        ? "Ningún boleto de venta coincide con los filtros. Vacía fechas y Celular o pulsa «Aplicar filtros» tras limpiar."
+        : "No hay boletos de venta para mostrar.";
     ticketsTable.innerHTML = `
       <div class="table-row table-head">
         <span>ID del boleto</span>

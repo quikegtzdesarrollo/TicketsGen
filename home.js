@@ -106,7 +106,7 @@ const renderSummary = (title, tickets, totalSpent, lastTicket, chartHtml) => {
       <p class="summary-title">${escapeHtml(title)}</p>
       <div class="summary-stats">
         <div>
-          <span class="summary-label">Tus boletos registrados</span>
+          <span class="summary-label">Tus boletos de venta</span>
           <span class="summary-value">${tickets}</span>
         </div>
         <div>
