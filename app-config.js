@@ -3,11 +3,7 @@
  * Edita esta lista para autorizar o quitar administradores.
  */
 const TicketGenConfig = {
-  adminEmails: [
-    "quikegtzdesarrollo@gmail.com",
-    "quikegtz@gmail.com",
-    "jeny3007@gmail.com",
-  ],
+  adminEmails: ["quikegtzdesarrollo@gmail.com", "jeny3007@gmail.com"],
 
   normalizeEmail(email) {
     return String(email ?? "").trim().toLowerCase();
@@ -33,18 +29,19 @@ const TicketGenConfig = {
   },
 
   getSessionEmail(user) {
-    const fromUser = user?.email || user?.Email || "";
-    if (fromUser) {
-      return this.normalizeEmail(fromUser);
-    }
-
     const storedEmail = localStorage.getItem("ticketgen_email");
     if (storedEmail) {
       return this.normalizeEmail(storedEmail);
     }
 
     const token = localStorage.getItem("ticketgen_token");
-    return this.normalizeEmail(this.decodeJwtEmail(token));
+    const fromToken = this.decodeJwtEmail(token);
+    if (fromToken) {
+      return this.normalizeEmail(fromToken);
+    }
+
+    const fromUser = user?.email || user?.Email || "";
+    return this.normalizeEmail(fromUser);
   },
 
   isAdminEmail(email) {
