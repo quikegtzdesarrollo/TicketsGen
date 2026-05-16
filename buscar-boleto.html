@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TicketGen | Escanear salida</title>
+    <title>TicketGen | Buscar boleto</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -37,31 +37,33 @@
       <section class="card card-wide">
         <header class="section-header">
           <div>
-            <h1>Escanear salida</h1>
+            <h1>Buscar boleto</h1>
             <p class="subtitle">
-              Registra la salida de un boleto o de un registro de miembro/visita para habilitar un nuevo ingreso.
+              Busca por ID parcial en boletos de venta y en registros de miembros o visitas.
             </p>
           </div>
           <a class="secondary-link" href="index.html">Volver al home</a>
         </header>
 
-        <div class="scanner-layout">
-          <div id="qr-reader" class="scanner-box"></div>
-          <div class="scanner-info">
-            <p class="helper">Enfoca el QR del boleto o del registro para registrar la salida.</p>
-            <p id="scan-status" class="status"></p>
-            <div class="scan-result" id="scan-result">
-              <p class="scan-label">Boleto:</p>
-              <p class="scan-value" id="scan-ticket"></p>
-              <p class="scan-label">Nombre:</p>
-              <p class="scan-value" id="scan-name"></p>
-              <p class="scan-label">Clasificación:</p>
-              <p class="scan-value" id="scan-type"></p>
-              <p class="scan-label">Precio:</p>
-              <p class="scan-value" id="scan-price"></p>
-            </div>
-          </div>
-        </div>
+        <form class="search-form" id="search-form">
+          <label class="field search-field">
+            ID del boleto o registro
+            <input
+              type="search"
+              id="search-query"
+              name="q"
+              placeholder="Ej: TG-12, MV-A1B2C3D4"
+              autocomplete="off"
+              required
+              minlength="2"
+            />
+          </label>
+          <button class="primary-link button" type="submit">Buscar</button>
+        </form>
+
+        <p id="search-status" class="helper" aria-live="polite"></p>
+
+        <div id="search-results" class="search-results-grid" hidden></div>
       </section>
     </main>
 
@@ -69,7 +71,6 @@
     <script src="supabase-client.js"></script>
     <script src="app-config.js"></script>
     <script src="menu.js"></script>
-    <script src="https://unpkg.com/html5-qrcode"></script>
-    <script src="escanear-salida.js"></script>
+    <script src="buscar-boleto.js"></script>
   </body>
 </html>
