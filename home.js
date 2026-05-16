@@ -33,6 +33,13 @@ const loadSummary = async () => {
     return;
   }
 
+  if (!window.TicketGenConfig?.isAdminUser(currentUser)) {
+    summaryContainer.innerHTML = `
+      <p class="helper">Sesión activa. Usa el menú para escanear entradas o salidas.</p>
+    `;
+    return;
+  }
+
   const { data: dbUser, error: userError } = await ensureUserInDb(currentUser);
   if (!dbUser?.id) {
     summaryContainer.innerHTML = `<p class="helper">No se pudo validar el usuario. ${userError ?? ""}</p>`;

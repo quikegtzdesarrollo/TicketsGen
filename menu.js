@@ -4,10 +4,43 @@ const loginIndicator = document.getElementById("login-indicator");
 const loginName = loginIndicator?.querySelector(".login-name");
 const loginAvatar = loginIndicator?.querySelector(".login-avatar");
 
-const updateAuthLinks = (isLoggedIn) => {
+const getStoredUser = () => {
+  const storedUser = localStorage.getItem("ticketgen_user");
+  if (!storedUser) {
+    return null;
+  }
+  try {
+    return JSON.parse(storedUser);
+  } catch (error) {
+    return null;
+  }
+};
+
+const isAdminSession = () => {
+  const user = getStoredUser();
+  return !!user && window.TicketGenConfig?.isAdminUser(user);
+};
+
+const updateMenuVisibility = () => {
+  const user = getStoredUser();
+  const isLoggedIn = !!user;
+  const isAdmin = isAdminSession();
+
   document.querySelectorAll("[data-auth='required']").forEach((link) => {
     if (link instanceof HTMLElement) {
-      link.style.display = isLoggedIn ? "" : "none";
+      link.style.display = isLoggedIn && isAdmin ? "" : "none";
+    }
+  });
+
+  document.querySelectorAll("[data-admin-only]").forEach((link) => {
+    if (link instanceof HTMLElement) {
+      link.style.display = isLoggedIn && isAdmin ? "" : "none";
+    }
+  });
+
+  document.querySelectorAll(".menu-logout").forEach((button) => {
+    if (button instanceof HTMLElement) {
+      button.style.display = isLoggedIn ? "" : "none";
     }
   });
 };
@@ -28,29 +61,24 @@ const updateLoginIndicator = () => {
   if (!loginIndicator) {
     return;
   }
-  const storedUser = localStorage.getItem("ticketgen_user");
-  if (storedUser) {
-    try {
-      const user = JSON.parse(storedUser);
-      const name = user?.name || "Sesión activa";
-      if (loginName) {
-        loginName.textContent = name;
-      }
-      if (loginAvatar) {
-        if (user?.picture) {
-          loginAvatar.style.backgroundImage = `url("${user.picture}")`;
-          loginAvatar.classList.add("has-photo");
-        } else {
-          loginAvatar.style.backgroundImage = "";
-          loginAvatar.classList.remove("has-photo");
-        }
-      }
-      loginIndicator.classList.add("is-logged");
-      updateAuthLinks(true);
-      return;
-    } catch (error) {
-      // ignore parse errors and fall back to default
+  const user = getStoredUser();
+  if (user) {
+    const name = user?.name || "Sesión activa";
+    if (loginName) {
+      loginName.textContent = name;
     }
+    if (loginAvatar) {
+      if (user?.picture) {
+        loginAvatar.style.backgroundImage = `url("${user.picture}")`;
+        loginAvatar.classList.add("has-photo");
+      } else {
+        loginAvatar.style.backgroundImage = "";
+        loginAvatar.classList.remove("has-photo");
+      }
+    }
+    loginIndicator.classList.add("is-logged");
+    updateMenuVisibility();
+    return;
   }
   if (loginName) {
     loginName.textContent = "Sin sesión";
@@ -60,7 +88,7 @@ const updateLoginIndicator = () => {
     loginAvatar.classList.remove("has-photo");
   }
   loginIndicator.classList.remove("is-logged");
-  updateAuthLinks(false);
+  updateMenuVisibility();
 };
 
 const handleLogout = () => {
@@ -88,3 +116,5 @@ document.addEventListener("keydown", (event) => {
     closeMenu();
   }
 });
+
+window.isAdminSession = isAdminSession;

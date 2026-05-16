@@ -23,9 +23,9 @@
       <div class="menu-panel">
         <h2>Menú</h2>
         <a href="index.html">Home</a>
-        <a href="mis-boletos.html" data-auth="required">Boletos</a>
-        <a href="boletos-sin-pagar.html" data-auth="required">Boletos sin pagar</a>
-        <a href="compra-boletos.html">Generación de boletos</a>
+        <a href="mis-boletos.html" data-auth="required" data-admin-only>Boletos</a>
+        <a href="boletos-sin-pagar.html" data-auth="required" data-admin-only>Boletos sin pagar</a>
+        <a href="compra-boletos.html" data-admin-only>Generación de boletos</a>
         <a href="escanear-entrada.html">Escanear entrada</a>
         <a href="escanear-salida.html">Escanear salida</a>
         <button class="menu-logout" type="button">Cerrar sesión</button>
@@ -63,6 +63,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase-client.js"></script>
+    <script src="app-config.js"></script>
     <script src="menu.js"></script>
     <script src="login.js"></script>
   </body>
