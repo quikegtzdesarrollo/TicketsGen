@@ -44,10 +44,20 @@
         </header>
 
         <div class="scanner-layout">
-          <div id="qr-reader" class="scanner-box"></div>
+          <div class="scanner-column">
+            <div id="qr-reader" class="scanner-box"></div>
+            <button
+              class="primary-link button scan-another-button"
+              id="scan-another"
+              type="button"
+            >
+              Registrar otra entrada
+            </button>
+          </div>
           <div class="scanner-info">
             <p class="helper">Enfoca el QR del boleto para validarlo.</p>
             <p id="scan-status" class="status"></p>
+            <p id="scan-person-name" class="scan-person-name" hidden></p>
             <div class="scan-result" id="scan-result">
               <p class="scan-label">Boleto:</p>
               <p class="scan-value" id="scan-ticket"></p>
@@ -58,13 +68,6 @@
               <p class="scan-label">Precio:</p>
               <p class="scan-value" id="scan-price"></p>
             </div>
-            <button
-              class="primary-link button scan-another-button"
-              id="scan-another"
-              type="button"
-            >
-              Registrar otra entrada
-            </button>
           </div>
         </div>
       </section>

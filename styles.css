@@ -175,7 +175,14 @@ h1 {
   display: grid;
   grid-template-columns: minmax(240px, 360px) 1fr;
   gap: 20px;
-  align-items: center;
+  align-items: start;
+}
+
+.scanner-column {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
 }
 
 .scanner-box {
@@ -217,8 +224,22 @@ h1 {
 }
 
 .scan-another-button {
-  align-self: flex-start;
-  margin-top: 4px;
+  width: 100%;
+}
+
+.scan-person-name {
+  margin: 0;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #e9eeff;
+  font-size: 20px;
+  font-weight: 700;
+  color: #1f2a44;
+  text-align: center;
+}
+
+.scan-person-name[hidden] {
+  display: none;
 }
 
 @media (max-width: 720px) {
