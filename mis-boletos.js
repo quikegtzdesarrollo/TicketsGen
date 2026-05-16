@@ -30,6 +30,12 @@ const paymentsByOrderId = (paymentRows) => {
 
 const digitsOnly = (value) => String(value ?? "").replace(/\D/g, "");
 
+const escapeAttr = (value) =>
+  String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;");
+
 const phoneMatchesFilter = (storedPhone, query) => {
   const q = query.trim();
   if (!q) {
@@ -62,8 +68,9 @@ const renderRows = (tickets) => {
           class="qr-button"
           type="button"
           aria-label="Abrir QR"
-          data-ticket-id="${ticket.ticket_code}"
-          data-ticket-owner="${ticket.attendees?.full_name ?? ""}"
+          data-ticket-id="${escapeAttr(ticket.ticket_code)}"
+          data-ticket-owner="${escapeAttr(ticket.attendees?.full_name ?? "")}"
+          data-ticket-phone="${escapeAttr(ticket.reference_phone ?? "")}"
         >
           <span aria-hidden="true">📱</span>
         </button>

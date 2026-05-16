@@ -670,6 +670,11 @@ input[type="password"] {
   text-align: center;
 }
 
+.qr-export-hint {
+  margin: 8px 0 0;
+  font-size: 12px;
+}
+
 .qr-box {
   width: 180px;
   height: 180px;
