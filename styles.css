@@ -216,6 +216,11 @@ h1 {
   color: #1f2a44;
 }
 
+.scan-another-button {
+  align-self: flex-start;
+  margin-top: 4px;
+}
+
 @media (max-width: 720px) {
   .scanner-layout {
     grid-template-columns: 1fr;

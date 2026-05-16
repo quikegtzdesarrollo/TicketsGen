@@ -4,9 +4,11 @@ const scanTicket = document.getElementById("scan-ticket");
 const scanName = document.getElementById("scan-name");
 const scanType = document.getElementById("scan-type");
 const scanPrice = document.getElementById("scan-price");
+const scanAnotherButton = document.getElementById("scan-another");
 
 let isProcessing = false;
 let qrReader = null;
+let scannerRunning = false;
 
 const setStatus = (message, type = "success") => {
   if (!scanStatus) {
@@ -33,8 +35,23 @@ const renderTicketInfo = (ticket) => {
       : "-";
 };
 
+const clearScanResult = () => {
+  if (scanTicket) {
+    scanTicket.textContent = "";
+  }
+  if (scanName) {
+    scanName.textContent = "";
+  }
+  if (scanType) {
+    scanType.textContent = "";
+  }
+  if (scanPrice) {
+    scanPrice.textContent = "";
+  }
+};
+
 const stopScanner = async () => {
-  if (!qrReader) {
+  if (!qrReader || !scannerRunning) {
     return;
   }
   try {
@@ -43,6 +60,37 @@ const stopScanner = async () => {
   } catch (error) {
     // ignore stop errors
   }
+  scannerRunning = false;
+};
+
+const startScanner = async () => {
+  if (scannerRunning) {
+    return;
+  }
+  if (!qrReader) {
+    qrReader = new Html5Qrcode(readerContainerId);
+  }
+  try {
+    await qrReader.start(
+      { facingMode: "environment" },
+      {
+        fps: 10,
+        qrbox: { width: 240, height: 240 },
+      },
+      onScanSuccess,
+      onScanFailure
+    );
+    scannerRunning = true;
+  } catch (error) {
+    setStatus("No se pudo acceder a la cámara.", "error");
+  }
+};
+
+const resetForAnotherEntry = async () => {
+  isProcessing = false;
+  clearScanResult();
+  setStatus("Enfoca el QR del boleto para validarlo.");
+  await startScanner();
 };
 
 const markTicketAsUsed = async (ticketCode) => {
@@ -111,21 +159,8 @@ const onScanSuccess = (decodedText) => {
 
 const onScanFailure = () => {};
 
-const initScanner = () => {
-  qrReader = new Html5Qrcode(readerContainerId);
-  qrReader
-    .start(
-      { facingMode: "environment" },
-      {
-        fps: 10,
-        qrbox: { width: 240, height: 240 },
-      },
-      onScanSuccess,
-      onScanFailure
-    )
-    .catch(() => {
-      setStatus("No se pudo acceder a la cámara.", "error");
-    });
-};
+scanAnotherButton?.addEventListener("click", () => {
+  resetForAnotherEntry();
+});
 
-initScanner();
+startScanner();
