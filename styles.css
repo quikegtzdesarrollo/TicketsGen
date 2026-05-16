@@ -334,6 +334,37 @@ input[type="password"] {
   grid-template-columns: 1.4fr 1fr 0.9fr;
 }
 
+.bulk-upload-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.bulk-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.bulk-format-example code {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: #eef2ff;
+  font-size: 13px;
+}
+
+.bulk-preview-wrap h2 {
+  margin: 0 0 10px;
+  font-size: 18px;
+}
+
+.table-bulk .table-row {
+  grid-template-columns: 1.4fr 1fr 1fr;
+}
+
 .qr-button {
   border: none;
   background: #ffffff;

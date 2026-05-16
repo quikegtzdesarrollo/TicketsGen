@@ -3,10 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TicketGen | Escanear salida</title>
+    <title>TicketGen | Carga masiva</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
-  <body>
+  <body data-require-admin="true">
     <header class="topbar">
       <button class="icon-button menu-toggle" type="button" aria-label="Abrir menú">
         ☰
@@ -36,30 +36,50 @@
       <section class="card card-wide">
         <header class="section-header">
           <div>
-            <h1>Escanear salida</h1>
+            <h1>Carga masiva</h1>
             <p class="subtitle">
-              Registra la salida para habilitar un nuevo ingreso.
+              Importa registros desde un archivo de texto. Una línea por persona:
+              <strong>Nombre|Celular</strong> (el celular es opcional).
             </p>
           </div>
           <a class="secondary-link" href="index.html">Volver al home</a>
         </header>
 
-        <div class="scanner-layout">
-          <div id="qr-reader" class="scanner-box"></div>
-          <div class="scanner-info">
-            <p class="helper">Enfoca el QR del boleto para registrar la salida.</p>
-            <p id="scan-status" class="status"></p>
-            <div class="scan-result" id="scan-result">
-              <p class="scan-label">Boleto:</p>
-              <p class="scan-value" id="scan-ticket"></p>
-              <p class="scan-label">Nombre:</p>
-              <p class="scan-value" id="scan-name"></p>
-              <p class="scan-label">Clasificación:</p>
-              <p class="scan-value" id="scan-type"></p>
-              <p class="scan-label">Precio:</p>
-              <p class="scan-value" id="scan-price"></p>
-            </div>
+        <div class="bulk-upload-section">
+          <label class="upload-field">
+            Archivo (.txt)
+            <input type="file" id="bulk-file" accept=".txt,text/plain" />
+            <span class="upload-hint" id="bulk-file-name">
+              Ningún archivo seleccionado
+            </span>
+          </label>
+
+          <p class="helper bulk-format-example">
+            Ejemplo de contenido:<br />
+            <code>Andrea López|5551234567</code><br />
+            <code>Carlos Ruiz|</code><br />
+            <code>Invitado sin celular</code>
+          </p>
+
+          <p class="helper">
+            Todos los registros se guardan con tipo
+            <strong>Miembros o Visitas</strong>.
+          </p>
+
+          <div class="bulk-actions">
+            <button class="primary-link button" id="bulk-upload" type="button" disabled>
+              Cargar registros
+            </button>
           </div>
+
+          <p id="bulk-status" class="status"></p>
+          <p id="bulk-errors" class="status status-error"></p>
+        </div>
+
+        <div class="bulk-preview-wrap" id="bulk-preview-wrap" hidden>
+          <h2>Vista previa</h2>
+          <p class="helper" id="bulk-preview-count"></p>
+          <div class="table table-bulk" id="bulk-preview-table"></div>
         </div>
       </section>
     </main>
@@ -68,7 +88,7 @@
     <script src="supabase-client.js"></script>
     <script src="app-config.js"></script>
     <script src="menu.js"></script>
-    <script src="https://unpkg.com/html5-qrcode"></script>
-    <script src="escanear-salida.js"></script>
+    <script src="access-control.js"></script>
+    <script src="carga-masiva.js"></script>
   </body>
 </html>
