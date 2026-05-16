@@ -1,6 +1,11 @@
 const ticketsTable = document.getElementById("tickets-table");
 const ticketsStatus = document.getElementById("tickets-status");
+const ticketsTotalCount = document.getElementById("tickets-total-count");
+const ticketsShownCount = document.getElementById("tickets-shown-count");
+const ticketsSummaryDetail = document.getElementById("tickets-summary-detail");
 const filterButton = document.querySelector(".filters .button");
+
+let allTickets = [];
 const receiptModal = document.getElementById("receipt-modal");
 const receiptImage = document.getElementById("receipt-image");
 const receiptLink = document.getElementById("receipt-link");
@@ -54,6 +59,27 @@ const phoneMatchesFilter = (storedPhone, query) => {
     return false;
   }
   return rawDigits.includes(qDigits);
+};
+
+const updateTicketsSummary = (shown, total) => {
+  if (ticketsTotalCount) {
+    ticketsTotalCount.textContent = String(total);
+  }
+  if (ticketsShownCount) {
+    ticketsShownCount.textContent = String(shown);
+  }
+  if (!ticketsSummaryDetail) {
+    return;
+  }
+  if (total === 0) {
+    ticketsSummaryDetail.textContent = "No hay boletos registrados.";
+    return;
+  }
+  if (shown === total) {
+    ticketsSummaryDetail.textContent = "Todos los boletos coinciden con los filtros actuales.";
+    return;
+  }
+  ticketsSummaryDetail.textContent = `${shown} de ${total} boleto(s) con los filtros aplicados.`;
 };
 
 const renderRows = (tickets) => {
@@ -134,11 +160,16 @@ const applyClientFilter = (tickets) => {
 const loadTickets = async () => {
   const currentUser = getCurrentUser();
   if (!currentUser) {
+    allTickets = [];
+    updateTicketsSummary(0, 0);
     ticketsStatus.textContent = "Inicia sesión para ver los boletos.";
     return;
   }
 
   ticketsStatus.textContent = "Cargando boletos...";
+  if (ticketsSummaryDetail) {
+    ticketsSummaryDetail.textContent = "Cargando...";
+  }
 
   const { data: ticketRows, error } = await supabaseClient
     .from("tickets")
@@ -146,7 +177,12 @@ const loadTickets = async () => {
     .order("created_at", { ascending: false });
 
   if (error) {
+    allTickets = [];
+    updateTicketsSummary(0, 0);
     ticketsStatus.textContent = "Error al cargar boletos.";
+    if (ticketsSummaryDetail) {
+      ticketsSummaryDetail.textContent = "No se pudo cargar el resumen.";
+    }
     console.error(error);
     return;
   }
@@ -171,7 +207,7 @@ const loadTickets = async () => {
     }
   }
 
-  const normalized = rows.map((ticket) => {
+  allTickets = rows.map((ticket) => {
     const oid = ticket.order_id;
     const pay = oid != null ? payMap[String(oid)] : undefined;
     return {
@@ -180,10 +216,12 @@ const loadTickets = async () => {
       reference_phone: pay?.reference_phone ?? null,
     };
   });
-  const filtered = applyClientFilter(normalized);
+  const filtered = applyClientFilter(allTickets);
+  updateTicketsSummary(filtered.length, allTickets.length);
+
   if (!filtered.length) {
     ticketsStatus.textContent =
-      normalized.length > 0
+      allTickets.length > 0
         ? "Ningún boleto coincide con los filtros. Vacía fechas y Celular o pulsa «Aplicar filtros» tras limpiar."
         : "No hay boletos para mostrar.";
     ticketsTable.innerHTML = `

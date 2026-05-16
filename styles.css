@@ -467,6 +467,14 @@ select {
   margin-bottom: 24px;
 }
 
+.tickets-summary {
+  margin-bottom: 20px;
+}
+
+.tickets-summary-stats {
+  justify-content: flex-start;
+}
+
 .members-list-header {
   display: flex;
   align-items: center;
