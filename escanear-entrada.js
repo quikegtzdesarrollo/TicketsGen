@@ -7,6 +7,10 @@ const scanPrice = document.getElementById("scan-price");
 const scanPersonName = document.getElementById("scan-person-name");
 const scanAnotherButton = document.getElementById("scan-another");
 
+const MEMBER_QR_PREFIX = "MV-";
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 let isProcessing = false;
 let qrReader = null;
 let scannerRunning = false;
@@ -18,7 +22,27 @@ const setStatus = (message, type = "success") => {
     return;
   }
   scanStatus.textContent = message;
-  scanStatus.style.color = type === "error" ? "#b42318" : "#2f7d32";
+  scanStatus.className = type === "error" ? "status status-error" : "status status-success";
+};
+
+const formatMemberDisplayId = (id) => {
+  if (!id) {
+    return "-";
+  }
+  const text = String(id).replace(/-/g, "");
+  return text.slice(0, 8).toUpperCase();
+};
+
+const parseMemberVisitId = (code) => {
+  const trimmed = String(code ?? "").trim();
+  if (!trimmed.toUpperCase().startsWith(MEMBER_QR_PREFIX)) {
+    return null;
+  }
+  const memberId = trimmed.slice(MEMBER_QR_PREFIX.length).trim();
+  if (!UUID_PATTERN.test(memberId)) {
+    return null;
+  }
+  return memberId;
 };
 
 const attendeeDisplayName = (ticket) => {
@@ -63,6 +87,24 @@ const renderTicketInfo = (ticket) => {
     ticket?.price !== undefined && ticket?.price !== null
       ? `$${Number(ticket.price).toFixed(2)}`
       : "-";
+};
+
+const renderMemberVisitInfo = (member) => {
+  if (!scanTicket || !scanName || !scanType || !scanPrice) {
+    return;
+  }
+
+  const name = member?.full_name?.trim() || "";
+  const church = member?.inviting_church?.trim() || "";
+  const recordType = member?.record_type?.trim() || "Miembros o Visitas";
+
+  scanTicket.textContent = member?.id
+    ? `${MEMBER_QR_PREFIX}${formatMemberDisplayId(member.id)}`
+    : "-";
+  scanName.textContent = name || "-";
+  setPersonNameDisplay(name);
+  scanType.textContent = church ? `${recordType} · ${church}` : recordType;
+  scanPrice.textContent = "-";
 };
 
 const clearScanResult = () => {
@@ -146,11 +188,90 @@ const resetForAnotherEntry = async () => {
   setStatus("Reactivando cámara...");
   const started = await restartScanner();
   if (started) {
-    setStatus("Enfoca el QR del boleto para validarlo.");
+    setStatus("Enfoca el QR del boleto o del registro de miembro/visita.");
   }
   if (scanAnotherButton) {
     scanAnotherButton.disabled = false;
   }
+};
+
+const memberVisitSelect =
+  "id,full_name,reference_phone,inviting_church,record_type,used,used_at";
+
+const markMemberVisitAsUsed = async (memberId) => {
+  if (isProcessing) {
+    return;
+  }
+  isProcessing = true;
+  setStatus("Validando registro de miembro o visita...");
+
+  const { data: existing, error: existingError } = await supabaseClient
+    .from("member_visits")
+    .select(memberVisitSelect)
+    .eq("id", memberId)
+    .single();
+
+  if (existingError || !existing) {
+    const message = String(existingError?.message ?? "");
+    const hint =
+      message.includes("used") || existingError?.code === "42703"
+        ? " Ejecuta sql/member_visits.sql en Supabase (columnas used y used_at)."
+        : "";
+    setStatus(`No se encontró el registro.${hint}`, "error");
+    isProcessing = false;
+    return;
+  }
+
+  const personName = existing.full_name?.trim() || "";
+  const displayCode = `${MEMBER_QR_PREFIX}${formatMemberDisplayId(memberId)}`;
+  renderMemberVisitInfo(existing);
+
+  if (existing.used) {
+    setStatus(
+      personName
+        ? `Este registro ya fue utilizado (${personName}).`
+        : "Este registro ya fue utilizado.",
+      "error"
+    );
+    isProcessing = false;
+    return;
+  }
+
+  const { data, error } = await supabaseClient
+    .from("member_visits")
+    .update({ used: true, used_at: new Date().toISOString() })
+    .eq("id", memberId)
+    .select(memberVisitSelect)
+    .single();
+
+  if (error || !data) {
+    console.error(error);
+    const message = String(error?.message ?? "");
+    const hint =
+      message.includes("used") || error?.code === "42703"
+        ? " Ejecuta sql/member_visits.sql en Supabase."
+        : message.includes("policy")
+          ? " Falta la política member_visits_update_anon en Supabase."
+          : "";
+    setStatus(`No se pudo actualizar el registro.${hint}`, "error");
+    isProcessing = false;
+    return;
+  }
+
+  renderMemberVisitInfo(data);
+
+  if (data.used && data.used_at) {
+    setStatus(
+      personName
+        ? `Entrada registrada: ${personName} (${displayCode})`
+        : `Registro ${displayCode} validado.`
+    );
+    await destroyScanner();
+  } else {
+    setStatus("El registro no pudo marcarse como usado.", "error");
+  }
+
+  isProcessing = false;
 };
 
 const markTicketAsUsed = async (ticketCode) => {
@@ -216,16 +337,27 @@ const markTicketAsUsed = async (ticketCode) => {
   isProcessing = false;
 };
 
+const processScan = (decodedText) => {
+  const code = decodedText.trim();
+  if (!code) {
+    setStatus("QR inválido.", "error");
+    return;
+  }
+
+  const memberId = parseMemberVisitId(code);
+  if (memberId) {
+    markMemberVisitAsUsed(memberId);
+    return;
+  }
+
+  markTicketAsUsed(code);
+};
+
 const onScanSuccess = (decodedText) => {
   if (!decodedText || isProcessing) {
     return;
   }
-  const ticketCode = decodedText.trim();
-  if (!ticketCode) {
-    setStatus("QR inválido.", "error");
-    return;
-  }
-  markTicketAsUsed(ticketCode);
+  processScan(decodedText);
 };
 
 const onScanFailure = () => {};
@@ -234,4 +366,8 @@ scanAnotherButton?.addEventListener("click", () => {
   resetForAnotherEntry();
 });
 
-startScanner();
+startScanner().then((started) => {
+  if (started) {
+    setStatus("Enfoca el QR del boleto o del registro de miembro/visita.");
+  }
+});
