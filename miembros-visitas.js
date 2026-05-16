@@ -34,7 +34,8 @@ const escapeAttr = (value) =>
   String(value ?? "")
     .replace(/&/g, "&amp;")
     .replace(/"/g, "&quot;")
-    .replace(/</g, "&lt;");
+    .replace(/</g, "&lt;")
+    .replace(/[\r\n]+/g, " ");
 
 const formatDisplayId = (id) => {
   if (!id) {
@@ -591,6 +592,19 @@ membersTable?.addEventListener("click", (event) => {
   if (!(target instanceof Element)) {
     return;
   }
+
+  const qrButton = target.closest(".qr-button");
+  if (qrButton instanceof HTMLButtonElement && typeof window.openTicketQrModal === "function") {
+    event.preventDefault();
+    event.stopPropagation();
+    window.openTicketQrModal(
+      qrButton.getAttribute("data-ticket-id") ?? "",
+      qrButton.getAttribute("data-ticket-owner") ?? "",
+      qrButton.getAttribute("data-ticket-phone") ?? ""
+    );
+    return;
+  }
+
   const deleteButton = target.closest(".delete-button");
   if (deleteButton instanceof HTMLButtonElement) {
     handleDeleteMember(deleteButton.dataset.memberId, deleteButton.dataset.memberName);

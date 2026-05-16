@@ -10,6 +10,12 @@ let currentTicketId = "";
 let currentOwner = "";
 let currentPhone = "";
 
+const readButtonData = (button) => ({
+  ticketId: button.getAttribute("data-ticket-id") ?? button.dataset.ticketId ?? "",
+  owner: button.getAttribute("data-ticket-owner") ?? button.dataset.ticketOwner ?? "",
+  phone: button.getAttribute("data-ticket-phone") ?? button.dataset.ticketPhone ?? "",
+});
+
 const getQrDataUrl = () => {
   if (!qrContainer) {
     return "";
@@ -22,10 +28,34 @@ const getQrDataUrl = () => {
   return img?.src || "";
 };
 
-const renderQrCode = (text) => {
+const renderQrCode = async (text) => {
   if (!qrContainer || !text) {
     return;
   }
+
+  qrContainer.innerHTML = '<p class="helper">Generando QR...</p>';
+
+  if (window.TicketGenQrExport?.createQrCodeDataUrl) {
+    try {
+      const dataUrl = await window.TicketGenQrExport.createQrCodeDataUrl(text);
+      qrContainer.innerHTML = "";
+      const img = document.createElement("img");
+      img.src = dataUrl;
+      img.width = 180;
+      img.height = 180;
+      img.alt = "Código QR";
+      qrContainer.appendChild(img);
+      return;
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  if (typeof QRCode === "undefined") {
+    qrContainer.innerHTML = '<p class="helper">No se pudo cargar el generador QR.</p>';
+    return;
+  }
+
   qrContainer.innerHTML = "";
   // eslint-disable-next-line no-new
   new QRCode(qrContainer, {
@@ -49,14 +79,22 @@ const buildQrExportDataUrl = async () => {
 };
 
 const openModal = (ticketId, owner, phone) => {
+  if (!modal) {
+    return;
+  }
+
   currentTicketId = ticketId ?? "";
   currentOwner = owner ?? "";
   currentPhone = phone ?? "";
 
+  const isMemberVisit = String(currentTicketId).startsWith("MV-");
+
   if (ticketLabel) {
     ticketLabel.textContent = currentTicketId
-      ? `Boleto: ${currentTicketId}`
-      : "Boleto seleccionado";
+      ? isMemberVisit
+        ? `Registro: ${currentTicketId}`
+        : `Boleto: ${currentTicketId}`
+      : "Registro seleccionado";
   }
   if (ticketOwner) {
     ticketOwner.textContent = currentOwner
@@ -69,14 +107,28 @@ const openModal = (ticketId, owner, phone) => {
     ticketPhone.hidden = !phoneText;
   }
 
-  renderQrCode(currentTicketId);
   modal.classList.add("modal-open");
   modal.setAttribute("aria-hidden", "false");
+  renderQrCode(currentTicketId);
 };
 
 const closeModal = () => {
+  if (!modal) {
+    return;
+  }
   modal.classList.remove("modal-open");
   modal.setAttribute("aria-hidden", "true");
+};
+
+const handleQrButtonClick = (button) => {
+  if (!(button instanceof HTMLButtonElement)) {
+    return;
+  }
+  const { ticketId, owner, phone } = readButtonData(button);
+  if (!ticketId) {
+    return;
+  }
+  openModal(ticketId, owner, phone);
 };
 
 document.addEventListener("click", (event) => {
@@ -88,13 +140,11 @@ document.addEventListener("click", (event) => {
   if (!button) {
     return;
   }
-  const ticketId = button.dataset.ticketId;
-  const owner = button.dataset.ticketOwner;
-  const phone = button.dataset.ticketPhone;
-  openModal(ticketId, owner, phone);
+  event.preventDefault();
+  handleQrButtonClick(button);
 });
 
-modal.addEventListener("click", (event) => {
+modal?.addEventListener("click", (event) => {
   const target = event.target;
   if (target instanceof Element && target.dataset.closeModal === "true") {
     closeModal();
@@ -102,7 +152,7 @@ modal.addEventListener("click", (event) => {
 });
 
 document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape" && modal.classList.contains("modal-open")) {
+  if (event.key === "Escape" && modal?.classList.contains("modal-open")) {
     closeModal();
   }
 });
@@ -158,3 +208,5 @@ qrShare?.addEventListener("click", async () => {
 if (qrShare && !navigator.share) {
   qrShare.style.display = "none";
 }
+
+window.openTicketQrModal = openModal;

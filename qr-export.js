@@ -131,4 +131,5 @@ const buildQrExportDataUrl = async (text, ticketId, owner, phone) => {
 window.TicketGenQrExport = {
   composeQrExportImage,
   buildQrExportDataUrl,
+  createQrCodeDataUrl,
 };
