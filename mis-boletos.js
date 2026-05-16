@@ -5,6 +5,29 @@ const receiptModal = document.getElementById("receipt-modal");
 const receiptImage = document.getElementById("receipt-image");
 const receiptLink = document.getElementById("receipt-link");
 
+/** Una fila por order_id (prioriza payment con reference_phone). */
+const paymentsByOrderId = (paymentRows) => {
+  const map = {};
+  for (const row of paymentRows ?? []) {
+    const oid = row?.order_id;
+    if (oid == null) {
+      continue;
+    }
+    const key = String(oid);
+    const prev = map[key];
+    if (!prev) {
+      map[key] = row;
+      continue;
+    }
+    const prevPhone = String(prev.reference_phone ?? "").trim();
+    const nextPhone = String(row.reference_phone ?? "").trim();
+    if (!prevPhone && nextPhone) {
+      map[key] = row;
+    }
+  }
+  return map;
+};
+
 const digitsOnly = (value) => String(value ?? "").replace(/\D/g, "");
 
 const phoneMatchesFilter = (storedPhone, query) => {
@@ -13,9 +36,6 @@ const phoneMatchesFilter = (storedPhone, query) => {
     return true;
   }
   const raw = storedPhone ?? "";
-  if (!raw.trim()) {
-    return true;
-  }
   if (raw.includes(q)) {
     return true;
   }
@@ -23,7 +43,11 @@ const phoneMatchesFilter = (storedPhone, query) => {
   if (!qDigits.length) {
     return true;
   }
-  return digitsOnly(raw).includes(qDigits);
+  const rawDigits = digitsOnly(raw);
+  if (!rawDigits.length) {
+    return false;
+  }
+  return rawDigits.includes(qDigits);
 };
 
 const renderRows = (tickets) => {
@@ -111,7 +135,7 @@ const loadTickets = async () => {
 
   const { data: ticketRows, error } = await supabaseClient
     .from("tickets")
-    .select("ticket_code,created_at,attendees(full_name,is_child)")
+    .select("ticket_code,created_at,order_id,attendees(full_name,is_child)")
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -122,11 +146,33 @@ const loadTickets = async () => {
 
   const rows = ticketRows ?? [];
 
-  const normalized = rows.map((ticket) => ({
-    ...ticket,
-    receipt_base64: null,
-    reference_phone: null,
-  }));
+  const orderIds = [
+    ...new Set(rows.map((t) => t.order_id).filter((id) => id != null)),
+  ];
+
+  let payMap = {};
+  if (orderIds.length > 0) {
+    const { data: paymentRows, error: paymentsError } = await supabaseClient
+      .from("payments")
+      .select("order_id,reference_phone,receipt_base64")
+      .in("order_id", orderIds);
+
+    if (paymentsError) {
+      console.error(paymentsError);
+    } else {
+      payMap = paymentsByOrderId(paymentRows);
+    }
+  }
+
+  const normalized = rows.map((ticket) => {
+    const oid = ticket.order_id;
+    const pay = oid != null ? payMap[String(oid)] : undefined;
+    return {
+      ...ticket,
+      receipt_base64: pay?.receipt_base64 ?? null,
+      reference_phone: pay?.reference_phone ?? null,
+    };
+  });
   const filtered = applyClientFilter(normalized);
   if (!filtered.length) {
     ticketsStatus.textContent =
