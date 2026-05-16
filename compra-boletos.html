@@ -92,18 +92,39 @@
         </div>
 
         <div class="summary-section">
-          <h3>Comprobante de pago</h3>
-          <label class="upload-field">
-            Adjunta una imagen (JPG o PNG)
-            <input
-              type="file"
-              id="receipt-file"
-              accept="image/png, image/jpeg"
-            />
-            <span class="upload-hint" id="receipt-name">
-              Ningún archivo seleccionado
+          <h3>Forma de pago</h3>
+          <div class="payment-mode-control" role="group" aria-label="Forma de pago">
+            <span class="payment-mode-label payment-mode-label--active" id="payment-mode-label-now">
+              Pago ahora
             </span>
-          </label>
+            <label class="switch" title="Activar para registrar pago posterior">
+              <input type="checkbox" id="payment-deferred" />
+              <span class="switch-slider" aria-hidden="true"></span>
+            </label>
+            <span class="payment-mode-label" id="payment-mode-label-later">
+              Pago posterior
+            </span>
+          </div>
+          <p class="helper" id="payment-mode-hint">
+            Adjunta el comprobante para confirmar el pago al generar los boletos.
+          </p>
+        </div>
+
+        <div class="summary-section" id="payment-now-section">
+          <h3 id="payment-section-title">Comprobante de pago</h3>
+          <div id="payment-receipt-block">
+            <label class="upload-field">
+              Adjunta una imagen (JPG o PNG)
+              <input
+                type="file"
+                id="receipt-file"
+                accept="image/png, image/jpeg"
+              />
+              <span class="upload-hint" id="receipt-name">
+                Ningún archivo seleccionado
+              </span>
+            </label>
+          </div>
           <label class="field">
             Número de celular (opcional)
             <input

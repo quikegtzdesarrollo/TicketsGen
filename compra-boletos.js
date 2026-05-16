@@ -8,6 +8,12 @@ const confirmButton = document.getElementById("confirm-purchase");
 const receiptInput = document.getElementById("receipt-file");
 const receiptName = document.getElementById("receipt-name");
 const receiptPhone = document.getElementById("receipt-phone");
+const paymentDeferredInput = document.getElementById("payment-deferred");
+const paymentModeHint = document.getElementById("payment-mode-hint");
+const paymentModeLabelNow = document.getElementById("payment-mode-label-now");
+const paymentModeLabelLater = document.getElementById("payment-mode-label-later");
+const paymentReceiptBlock = document.getElementById("payment-receipt-block");
+const paymentSectionTitle = document.getElementById("payment-section-title");
 const errorMessage = document.getElementById("payment-error");
 const successMessage = document.getElementById("payment-success");
 
@@ -43,11 +49,36 @@ const updateRemoveHandlers = () => {
   });
 };
 
+const isDeferredPayment = () => paymentDeferredInput?.checked === true;
+
+const setPaymentModeUI = () => {
+  const deferred = isDeferredPayment();
+
+  paymentReceiptBlock?.classList.toggle("is-hidden", deferred);
+
+  if (paymentSectionTitle) {
+    paymentSectionTitle.textContent = deferred ? "Contacto (opcional)" : "Comprobante de pago";
+  }
+
+  if (paymentModeHint) {
+    paymentModeHint.textContent = deferred
+      ? "Se generarán los boletos y el pago quedará registrado como no pagado hasta que se complete."
+      : "Adjunta el comprobante para confirmar el pago al generar los boletos.";
+  }
+
+  paymentModeLabelNow?.classList.toggle("payment-mode-label--active", !deferred);
+  paymentModeLabelLater?.classList.toggle("payment-mode-label--active", deferred);
+};
+
 const openModal = () => {
   summaryModal.classList.add("modal-open");
   summaryModal.setAttribute("aria-hidden", "false");
   errorMessage.textContent = "";
   successMessage.textContent = "";
+  if (paymentDeferredInput) {
+    paymentDeferredInput.checked = false;
+  }
+  setPaymentModeUI();
 };
 
 const closeModal = () => {
@@ -56,6 +87,9 @@ const closeModal = () => {
 };
 
 const validateReceipt = () => {
+  if (isDeferredPayment()) {
+    return "";
+  }
   const file = receiptInput?.files?.[0];
   if (!file) {
     return "Adjunta el comprobante de pago.";
@@ -144,18 +178,21 @@ const processPurchase = async () => {
     return;
   }
 
-  const receiptFile = receiptInput?.files?.[0];
-  if (!receiptFile) {
-    errorMessage.textContent = "Adjunta el comprobante de pago.";
-    return;
-  }
+  const deferred = isDeferredPayment();
+  let receiptBase64 = null;
 
-  let receiptBase64 = "";
-  try {
-    receiptBase64 = await readReceiptAsBase64(receiptFile);
-  } catch (error) {
-    errorMessage.textContent = "No se pudo leer el comprobante.";
-    return;
+  if (!deferred) {
+    const receiptFile = receiptInput?.files?.[0];
+    if (!receiptFile) {
+      errorMessage.textContent = "Adjunta el comprobante de pago.";
+      return;
+    }
+    try {
+      receiptBase64 = await readReceiptAsBase64(receiptFile);
+    } catch (error) {
+      errorMessage.textContent = "No se pudo leer el comprobante.";
+      return;
+    }
   }
 
   const { data: order, error: orderError } = await supabaseClient
@@ -204,22 +241,37 @@ const processPurchase = async () => {
     return;
   }
 
-  const { error: paymentError } = await supabaseClient.from("payments").insert({
-    order_id: order.id,
-    amount: summaryTotalAmount,
-    currency: "MXN",
-    status: "comprobante",
-    method: "transferencia",
-    receipt_base64: receiptBase64,
-    reference_phone: receiptPhone?.value.trim() || null,
-  });
+  const paymentPayload = deferred
+    ? {
+        order_id: order.id,
+        amount: summaryTotalAmount,
+        currency: "MXN",
+        status: "no_pagado",
+        method: "pendiente",
+        receipt_base64: null,
+        reference_phone: receiptPhone?.value.trim() || null,
+      }
+    : {
+        order_id: order.id,
+        amount: summaryTotalAmount,
+        currency: "MXN",
+        status: "comprobante",
+        method: "transferencia",
+        receipt_base64: receiptBase64,
+        reference_phone: receiptPhone?.value.trim() || null,
+      };
+
+  const { error: paymentError } = await supabaseClient.from("payments").insert(paymentPayload);
 
   if (paymentError) {
-    errorMessage.textContent = "La orden se creó, pero falló el pago.";
+    errorMessage.textContent = "La orden se creó, pero falló el registro del pago.";
+    console.error(paymentError);
     return;
   }
 
-  successMessage.textContent = "Boletos generados. Recibirás la confirmación pronto.";
+  successMessage.textContent = deferred
+    ? "Boletos generados. El pago quedó pendiente."
+    : "Boletos generados. Recibirás la confirmación pronto.";
 };
 
 confirmButton.addEventListener("click", async () => {
@@ -248,6 +300,10 @@ confirmButton.addEventListener("click", async () => {
     if (receiptPhone) {
       receiptPhone.value = "";
     }
+    if (paymentDeferredInput) {
+      paymentDeferredInput.checked = false;
+    }
+    setPaymentModeUI();
     setTimeout(() => {
       closeModal();
       window.location.href = "mis-boletos.html";
@@ -277,3 +333,5 @@ receiptInput?.addEventListener("change", () => {
   const file = receiptInput.files?.[0];
   receiptName.textContent = file ? file.name : "Ningún archivo seleccionado";
 });
+
+paymentDeferredInput?.addEventListener("change", setPaymentModeUI);

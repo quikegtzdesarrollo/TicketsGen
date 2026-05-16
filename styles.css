@@ -522,6 +522,80 @@ input[type="password"] {
   margin: 0 0 12px;
 }
 
+.payment-mode-control {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.payment-mode-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #6b7387;
+  transition: color 0.2s ease;
+}
+
+.payment-mode-label--active {
+  color: #1f2a44;
+}
+
+.switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 52px;
+  height: 28px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.switch-slider {
+  position: absolute;
+  inset: 0;
+  background: #c7d0e3;
+  border-radius: 999px;
+  transition: background 0.2s ease;
+}
+
+.switch-slider::before {
+  content: "";
+  position: absolute;
+  height: 22px;
+  width: 22px;
+  left: 3px;
+  bottom: 3px;
+  background: #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 1px 4px rgba(31, 42, 68, 0.2);
+  transition: transform 0.2s ease;
+}
+
+.switch input:checked + .switch-slider {
+  background: #3b5bdb;
+}
+
+.switch input:checked + .switch-slider::before {
+  transform: translateX(24px);
+}
+
+.switch input:focus-visible + .switch-slider {
+  outline: 2px solid #3b5bdb;
+  outline-offset: 2px;
+}
+
+#payment-receipt-block.is-hidden {
+  display: none;
+}
+
 .payment-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
