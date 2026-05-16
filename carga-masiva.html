@@ -2,95 +2,13 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TicketGen | Carga masiva</title>
-    <link rel="stylesheet" href="styles.css" />
+    <meta http-equiv="refresh" content="0; url=miembros-visitas.html" />
+    <title>TicketGen | Redirigiendo…</title>
+    <script>
+      location.replace("miembros-visitas.html");
+    </script>
   </head>
-  <body data-require-admin="true">
-    <header class="topbar">
-      <button class="icon-button menu-toggle" type="button" aria-label="Abrir menú">
-        ☰
-      </button>
-      <span class="brand">TicketGen</span>
-      <span class="login-indicator" id="login-indicator">
-        <span class="login-avatar" aria-hidden="true"></span>
-        <span class="login-name"></span>
-      </span>
-    </header>
-    <nav class="menu" id="menu">
-      <div class="menu-backdrop" data-close-menu="true"></div>
-      <div class="menu-panel">
-        <h2>Menú</h2>
-        <a href="index.html">Home</a>
-        <a href="mis-boletos.html" data-auth="required" data-admin-only>Boletos</a>
-        <a href="boletos-sin-pagar.html" data-auth="required" data-admin-only>Boletos sin pagar</a>
-        <a href="compra-boletos.html" data-admin-only>Generación de boletos</a>
-        <a href="carga-masiva.html" data-admin-only>Carga masiva</a>
-        <a href="escanear-entrada.html">Escanear entrada</a>
-        <a href="escanear-salida.html">Escanear salida</a>
-        <button class="menu-logout" type="button">Cerrar sesión</button>
-      </div>
-    </nav>
-
-    <main class="page">
-      <section class="card card-wide">
-        <header class="section-header">
-          <div>
-            <h1>Carga masiva</h1>
-            <p class="subtitle">
-              Registros de <strong>Miembros o Visitas</strong>, separados de los boletos
-              de venta. Una línea por persona:
-              <strong>Nombre|Celular|Iglesia que invita</strong> (celular e iglesia
-              opcionales).
-            </p>
-          </div>
-          <a class="secondary-link" href="index.html">Volver al home</a>
-        </header>
-
-        <div class="bulk-upload-section">
-          <label class="upload-field">
-            Archivo (.txt)
-            <input type="file" id="bulk-file" accept=".txt,text/plain" />
-            <span class="upload-hint" id="bulk-file-name">
-              Ningún archivo seleccionado
-            </span>
-          </label>
-
-          <p class="helper bulk-format-example">
-            Ejemplo de contenido:<br />
-            <code>Andrea López|5551234567|Iglesia Central</code><br />
-            <code>Carlos Ruiz||</code> (sin celular ni iglesia)<br />
-            <code>María Soto|5550000000</code> (sin iglesia)
-          </p>
-
-          <p class="helper">
-            Los datos se guardan en la tabla <strong>member_visits</strong>, no en la
-            pantalla Boletos.
-          </p>
-
-          <div class="bulk-actions">
-            <button class="primary-link button" id="bulk-upload" type="button" disabled>
-              Cargar registros
-            </button>
-          </div>
-
-          <p id="bulk-status" class="status"></p>
-          <p id="bulk-errors" class="status status-error"></p>
-        </div>
-
-        <div class="bulk-preview-wrap" id="bulk-preview-wrap" hidden>
-          <h2>Vista previa</h2>
-          <p class="helper" id="bulk-preview-count"></p>
-          <div class="table table-bulk" id="bulk-preview-table"></div>
-        </div>
-      </section>
-    </main>
-
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="supabase-client.js"></script>
-    <script src="app-config.js"></script>
-    <script src="menu.js"></script>
-    <script src="access-control.js"></script>
-    <script src="carga-masiva.js"></script>
+  <body>
+    <p><a href="miembros-visitas.html">Ir a Miembros y Visitas</a></p>
   </body>
 </html>

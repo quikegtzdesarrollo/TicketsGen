@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TicketGen | Mis boletos</title>
+    <title>TicketGen | Miembros y Visitas</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body data-require-admin="true">
@@ -31,44 +31,62 @@
         <button class="menu-logout" type="button">Cerrar sesión</button>
       </div>
     </nav>
+
     <main class="page">
       <section class="card card-wide">
         <header class="section-header">
           <div>
-            <h1>Boletos</h1>
+            <h1>Miembros y Visitas</h1>
             <p class="subtitle">
-              Listado de todos los boletos. Filtra por fecha o celular.
+              Carga registros desde archivo .txt (separados de boletos de venta). Formato:
+              <strong>Nombre|Celular|Iglesia que invita</strong> (celular e iglesia opcionales).
             </p>
           </div>
           <a class="secondary-link" href="index.html">Volver al home</a>
         </header>
 
-        <form class="filters">
-          <label class="field">
-            Desde
-            <input type="date" name="fecha_inicio" />
+        <div class="bulk-upload-section">
+          <label class="upload-field">
+            Archivo (.txt)
+            <input type="file" id="bulk-file" accept=".txt,text/plain" />
+            <span class="upload-hint" id="bulk-file-name">
+              Ningún archivo seleccionado
+            </span>
           </label>
-          <label class="field">
-            Hasta
-            <input type="date" name="fecha_fin" />
-          </label>
-          <label class="field">
-            Celular
-            <input type="text" name="celular" placeholder="Ej: 5551234567" />
-          </label>
-          <button class="primary-link button" type="button">
-            Aplicar filtros
-          </button>
-        </form>
 
-        <p class="helper" id="tickets-status">Cargando boletos...</p>
-        <div class="table" id="tickets-table">
+          <p class="helper bulk-format-example">
+            Ejemplo:<br />
+            <code>Andrea López|5551234567|Iglesia Central</code><br />
+            <code>Carlos Ruiz||</code><br />
+            <code>María Soto|5550000000</code>
+          </p>
+
+          <div class="bulk-actions">
+            <button class="primary-link button" id="bulk-upload" type="button" disabled>
+              Cargar registros
+            </button>
+          </div>
+
+          <p id="bulk-status" class="status"></p>
+          <p id="bulk-errors" class="status status-error"></p>
+        </div>
+
+        <div class="bulk-preview-wrap" id="bulk-preview-wrap" hidden>
+          <h2>Vista previa de carga</h2>
+          <p class="helper" id="bulk-preview-count"></p>
+          <div class="table table-bulk" id="bulk-preview-table"></div>
+        </div>
+
+        <hr class="section-divider" />
+
+        <h2 class="members-list-title">Registros guardados</h2>
+        <p class="helper" id="members-status">Cargando registros...</p>
+        <div class="table table-members" id="members-table">
           <div class="table-row table-head">
-            <span>ID del boleto</span>
-            <span>Asignado a</span>
-            <span>Celular</span>
+            <span>ID</span>
+            <span>Nombre</span>
+            <span>Teléfono</span>
             <span>QR</span>
-            <span>Comprobante</span>
             <span>Eliminar</span>
           </div>
         </div>
@@ -79,7 +97,7 @@
       <div class="modal-backdrop" data-close-modal="true"></div>
       <div class="modal-card" role="document">
         <div class="modal-header">
-          <h2>QR del boleto</h2>
+          <h2 id="qr-modal-title">QR del registro</h2>
           <button class="icon-button" type="button" data-close-modal="true">
             ✕
           </button>
@@ -89,7 +107,9 @@
           <p id="qr-ticket-id" class="helper"></p>
           <p id="qr-ticket-owner" class="helper"></p>
           <p id="qr-ticket-phone" class="helper"></p>
-          <p class="helper qr-export-hint">La descarga incluye QR, ID, nombre y celular en una sola imagen.</p>
+          <p class="helper qr-export-hint">
+            La descarga incluye QR, ID, nombre y celular en una sola imagen.
+          </p>
           <div class="qr-actions">
             <button class="secondary-link button" id="qr-download" type="button">
               Descargar QR
@@ -102,31 +122,14 @@
       </div>
     </div>
 
-    <div class="modal" id="receipt-modal" aria-hidden="true" role="dialog">
-      <div class="modal-backdrop" data-close-receipt="true"></div>
-      <div class="modal-card modal-card-wide" role="document">
-        <div class="modal-header">
-          <h2>Comprobante de pago</h2>
-          <button class="icon-button" type="button" data-close-receipt="true">
-            ✕
-          </button>
-        </div>
-        <div class="receipt-preview">
-          <img id="receipt-image" alt="Comprobante de pago" />
-        </div>
-        <a id="receipt-link" class="secondary-link" target="_blank" rel="noreferrer">
-          Abrir en nueva pestaña
-        </a>
-      </div>
-    </div>
-
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase-client.js"></script>
     <script src="app-config.js"></script>
     <script src="menu.js"></script>
     <script src="access-control.js"></script>
-    <script src="mis-boletos.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script src="qr-modal.js"></script>
+    <script src="miembros-visitas.js"></script>
   </body>
 </html>
+

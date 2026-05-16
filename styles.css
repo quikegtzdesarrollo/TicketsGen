@@ -365,6 +365,21 @@ input[type="password"] {
   grid-template-columns: 1.2fr 1fr 1.1fr 0.9fr;
 }
 
+.section-divider {
+  margin: 28px 0;
+  border: none;
+  border-top: 1px solid #e2e8f0;
+}
+
+.members-list-title {
+  margin: 0 0 8px;
+  font-size: 18px;
+}
+
+.table-members .table-row {
+  grid-template-columns: 0.7fr 1.4fr 1fr 0.45fr 0.85fr;
+}
+
 .qr-button {
   border: none;
   background: #ffffff;

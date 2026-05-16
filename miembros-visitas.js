@@ -9,6 +9,8 @@ const bulkErrors = document.getElementById("bulk-errors");
 const bulkPreviewWrap = document.getElementById("bulk-preview-wrap");
 const bulkPreviewCount = document.getElementById("bulk-preview-count");
 const bulkPreviewTable = document.getElementById("bulk-preview-table");
+const membersTable = document.getElementById("members-table");
+const membersStatus = document.getElementById("members-status");
 
 let parsedRows = [];
 let parseIssues = [];
@@ -20,7 +22,23 @@ const escapeHtml = (value) =>
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 
-const setStatus = (message, type = "success") => {
+const escapeAttr = (value) =>
+  String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;");
+
+const formatDisplayId = (id) => {
+  if (!id) {
+    return "-";
+  }
+  const text = String(id).replace(/-/g, "");
+  return text.slice(0, 8).toUpperCase();
+};
+
+const qrPayload = (id) => `MV-${id}`;
+
+const setBulkStatus = (message, type = "success") => {
   if (!bulkStatus) {
     return;
   }
@@ -86,7 +104,7 @@ const renderPreview = (rows) => {
   }
 
   bulkPreviewWrap.hidden = false;
-  bulkPreviewCount.textContent = `${rows.length} registro(s) de ${RECORD_TYPE} listos para cargar.`;
+  bulkPreviewCount.textContent = `${rows.length} registro(s) listos para cargar.`;
 
   const body = rows
     .slice(0, 50)
@@ -102,11 +120,6 @@ const renderPreview = (rows) => {
     )
     .join("");
 
-  const more =
-    rows.length > 50
-      ? `<p class="helper">Mostrando los primeros 50 de ${rows.length} registros.</p>`
-      : "";
-
   bulkPreviewTable.innerHTML = `
     <div class="table-row table-head">
       <span>Nombre</span>
@@ -115,8 +128,127 @@ const renderPreview = (rows) => {
       <span>Tipo</span>
     </div>
     ${body}
-    ${more}
+    ${rows.length > 50 ? `<p class="helper">Mostrando los primeros 50 de ${rows.length}.</p>` : ""}
   `;
+};
+
+const renderMembersHead = () => {
+  if (!membersTable) {
+    return;
+  }
+  membersTable.innerHTML = `
+    <div class="table-row table-head">
+      <span>ID</span>
+      <span>Nombre</span>
+      <span>Teléfono</span>
+      <span>QR</span>
+      <span>Eliminar</span>
+    </div>
+  `;
+};
+
+const renderMembersRows = (rows) => {
+  if (!membersTable) {
+    return;
+  }
+
+  if (!rows.length) {
+    renderMembersHead();
+    if (membersStatus) {
+      membersStatus.textContent = "No hay registros guardados.";
+    }
+    return;
+  }
+
+  const body = rows
+    .map((row) => {
+      const displayId = formatDisplayId(row.id);
+      const qrCode = qrPayload(row.id);
+      return `
+      <div class="table-row">
+        <span title="${escapeAttr(row.id)}">${escapeHtml(displayId)}</span>
+        <span>${escapeHtml(row.full_name)}</span>
+        <span>${escapeHtml(row.reference_phone ?? "-")}</span>
+        <button
+          class="qr-button"
+          type="button"
+          aria-label="Ver QR"
+          data-ticket-id="${escapeAttr(qrCode)}"
+          data-ticket-owner="${escapeAttr(row.full_name)}"
+          data-ticket-phone="${escapeAttr(row.reference_phone ?? "")}"
+        >
+          <span aria-hidden="true">📱</span>
+        </button>
+        <button
+          class="delete-button"
+          type="button"
+          data-member-id="${escapeAttr(row.id)}"
+          data-member-name="${escapeAttr(row.full_name)}"
+        >
+          Eliminar
+        </button>
+      </div>
+    `;
+    })
+    .join("");
+
+  membersTable.innerHTML = `
+    <div class="table-row table-head">
+      <span>ID</span>
+      <span>Nombre</span>
+      <span>Teléfono</span>
+      <span>QR</span>
+      <span>Eliminar</span>
+    </div>
+    ${body}
+  `;
+
+  if (membersStatus) {
+    membersStatus.textContent = `${rows.length} registro(s).`;
+  }
+};
+
+const loadMemberVisits = async () => {
+  if (membersStatus) {
+    membersStatus.textContent = "Cargando registros...";
+  }
+
+  const { data, error } = await supabaseClient
+    .from("member_visits")
+    .select("id,full_name,reference_phone,inviting_church,record_type,created_at")
+    .eq("record_type", RECORD_TYPE)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error(error);
+    renderMembersHead();
+    if (membersStatus) {
+      membersStatus.textContent = "No se pudieron cargar los registros.";
+    }
+    return;
+  }
+
+  renderMembersRows(data ?? []);
+};
+
+const handleDeleteMember = async (id, name) => {
+  if (!id) {
+    return;
+  }
+  const label = name?.trim() || formatDisplayId(id);
+  if (!confirm(`¿Eliminar el registro de ${label}?`)) {
+    return;
+  }
+
+  const { error } = await supabaseClient.from("member_visits").delete().eq("id", id);
+
+  if (error) {
+    alert("No se pudo eliminar el registro.");
+    console.error(error);
+    return;
+  }
+
+  await loadMemberVisits();
 };
 
 const readSelectedFile = () =>
@@ -135,7 +267,7 @@ const readSelectedFile = () =>
 const handleFileChange = async () => {
   parsedRows = [];
   parseIssues = [];
-  setStatus("");
+  setBulkStatus("");
   setParseErrors([]);
 
   const file = bulkFileInput?.files?.[0];
@@ -163,19 +295,19 @@ const handleFileChange = async () => {
     setParseErrors(parseIssues);
 
     if (!parsedRows.length) {
-      setStatus("No se encontraron registros válidos en el archivo.", "error");
+      setBulkStatus("No se encontraron registros válidos en el archivo.", "error");
       if (bulkUploadButton) {
         bulkUploadButton.disabled = true;
       }
       return;
     }
 
-    setStatus(`${parsedRows.length} registro(s) listos. Pulsa «Cargar registros».`);
+    setBulkStatus(`${parsedRows.length} registro(s) listos. Pulsa «Cargar registros».`);
     if (bulkUploadButton) {
       bulkUploadButton.disabled = false;
     }
   } catch (error) {
-    setStatus(error.message || "Error al leer el archivo.", "error");
+    setBulkStatus(error.message || "Error al leer el archivo.", "error");
     if (bulkUploadButton) {
       bulkUploadButton.disabled = true;
     }
@@ -198,27 +330,25 @@ const insertBatches = async (rows) => {
 
 const handleUpload = async () => {
   if (!parsedRows.length) {
-    setStatus("No hay registros para cargar.", "error");
+    setBulkStatus("No hay registros para cargar.", "error");
     return;
   }
 
   const currentUser = getCurrentUser();
   if (!currentUser) {
-    setStatus("Inicia sesión para cargar registros.", "error");
+    setBulkStatus("Inicia sesión para cargar registros.", "error");
     return;
   }
 
   if (bulkUploadButton) {
     bulkUploadButton.disabled = true;
   }
-  setStatus("Cargando registros...");
+  setBulkStatus("Cargando registros...");
   setParseErrors(parseIssues);
 
   try {
     const inserted = await insertBatches(parsedRows);
-    setStatus(
-      `${inserted} registro(s) guardados como «${RECORD_TYPE}» (separados de los boletos de venta).`
-    );
+    setBulkStatus(`${inserted} registro(s) guardados correctamente.`);
     parsedRows = [];
     if (bulkFileInput) {
       bulkFileInput.value = "";
@@ -227,16 +357,17 @@ const handleUpload = async () => {
       bulkFileName.textContent = "Ningún archivo seleccionado";
     }
     renderPreview([]);
+    await loadMemberVisits();
   } catch (error) {
     console.error(error);
     const message = String(error?.message ?? "");
     const hint =
       error?.code === "PGRST205" || message.includes("member_visits")
-        ? " Ejecuta sql/member_visits.sql en Supabase (incluye columna inviting_church)."
+        ? " Ejecuta sql/member_visits.sql en Supabase."
         : message.includes("inviting_church")
-          ? " Agrega la columna inviting_church en Supabase (ver sql/member_visits.sql)."
+          ? " Agrega la columna inviting_church (ver sql/member_visits.sql)."
           : "";
-    setStatus(`No se pudieron guardar los registros.${hint}`, "error");
+    setBulkStatus(`No se pudieron guardar los registros.${hint}`, "error");
   } finally {
     if (bulkUploadButton) {
       bulkUploadButton.disabled = !parsedRows.length;
@@ -251,3 +382,16 @@ bulkFileInput?.addEventListener("change", () => {
 bulkUploadButton?.addEventListener("click", () => {
   handleUpload();
 });
+
+membersTable?.addEventListener("click", (event) => {
+  const target = event.target;
+  if (!(target instanceof Element)) {
+    return;
+  }
+  const deleteButton = target.closest(".delete-button");
+  if (deleteButton instanceof HTMLButtonElement) {
+    handleDeleteMember(deleteButton.dataset.memberId, deleteButton.dataset.memberName);
+  }
+});
+
+loadMemberVisits();
