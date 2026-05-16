@@ -12,15 +12,16 @@ const paymentsByOrderId = (paymentRows) => {
     if (oid == null) {
       continue;
     }
-    const prev = map[oid];
+    const key = String(oid);
+    const prev = map[key];
     if (!prev) {
-      map[oid] = row;
+      map[key] = row;
       continue;
     }
     const prevPhone = String(prev.reference_phone ?? "").trim();
     const nextPhone = String(row.reference_phone ?? "").trim();
     if (!prevPhone && nextPhone) {
-      map[oid] = row;
+      map[key] = row;
     }
   }
   return map;
@@ -132,12 +133,38 @@ const loadTickets = async () => {
     return;
   }
 
+  const { data: userOrders, error: ordersLookupError } = await supabaseClient
+    .from("orders")
+    .select("id")
+    .eq("user_id", dbUser.id);
+
+  if (ordersLookupError) {
+    ticketsStatus.textContent = "Error al cargar boletos.";
+    console.error(ordersLookupError);
+    return;
+  }
+
+  const orderIdsForUser = (userOrders ?? []).map((o) => o.id).filter((id) => id != null);
+
+  if (!orderIdsForUser.length) {
+    ticketsStatus.textContent = "No hay boletos para mostrar.";
+    ticketsTable.innerHTML = `
+      <div class="table-row table-head">
+        <span>ID del boleto</span>
+        <span>Asignado a</span>
+        <span>Celular</span>
+        <span>QR</span>
+        <span>Comprobante</span>
+        <span>Eliminar</span>
+      </div>
+    `;
+    return;
+  }
+
   const { data: ticketRows, error } = await supabaseClient
     .from("tickets")
-    .select(
-      "ticket_code,created_at,order_id,attendees(full_name,is_child),orders!inner(user_id)"
-    )
-    .eq("orders.user_id", dbUser.id)
+    .select("ticket_code,created_at,order_id,attendees(full_name,is_child)")
+    .in("order_id", orderIdsForUser)
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -165,7 +192,8 @@ const loadTickets = async () => {
   }
 
   const normalized = (ticketRows ?? []).map((ticket) => {
-    const pay = payMap[ticket.order_id];
+    const oid = ticket.order_id;
+    const pay = oid != null ? payMap[String(oid)] : undefined;
     return {
       ...ticket,
       receipt_base64: pay?.receipt_base64 ?? null,
