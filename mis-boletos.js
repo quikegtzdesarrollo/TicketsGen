@@ -5,35 +5,6 @@ const receiptModal = document.getElementById("receipt-modal");
 const receiptImage = document.getElementById("receipt-image");
 const receiptLink = document.getElementById("receipt-link");
 
-const paymentFieldsFromOrders = (ticket) => {
-  let orders = ticket.orders;
-  if (!orders) {
-    return { reference_phone: null, receipt_base64: null };
-  }
-  if (Array.isArray(orders)) {
-    orders = orders[0];
-  }
-  if (!orders) {
-    return { reference_phone: null, receipt_base64: null };
-  }
-  let payments = orders.payments;
-  if (!payments) {
-    return { reference_phone: null, receipt_base64: null };
-  }
-  if (!Array.isArray(payments)) {
-    payments = [payments];
-  }
-  if (!payments.length) {
-    return { reference_phone: null, receipt_base64: null };
-  }
-  const withPhone = payments.find((p) => String(p?.reference_phone ?? "").trim());
-  const row = withPhone ?? payments[0];
-  return {
-    reference_phone: row?.reference_phone ?? null,
-    receipt_base64: row?.receipt_base64 ?? null,
-  };
-};
-
 const digitsOnly = (value) => String(value ?? "").replace(/\D/g, "");
 
 const phoneMatchesFilter = (storedPhone, query) => {
@@ -42,6 +13,9 @@ const phoneMatchesFilter = (storedPhone, query) => {
     return true;
   }
   const raw = storedPhone ?? "";
+  if (!raw.trim()) {
+    return true;
+  }
   if (raw.includes(q)) {
     return true;
   }
@@ -135,29 +109,10 @@ const loadTickets = async () => {
 
   ticketsStatus.textContent = "Cargando boletos...";
 
-  const selectWithPayments =
-    "ticket_code,created_at,attendees(full_name,is_child),orders(payments(receipt_base64,reference_phone))";
-
-  let { data: ticketRows, error } = await supabaseClient
+  const { data: ticketRows, error } = await supabaseClient
     .from("tickets")
-    .select(selectWithPayments)
+    .select("ticket_code,created_at,attendees(full_name,is_child)")
     .order("created_at", { ascending: false });
-
-  if (error) {
-    console.warn("Carga con pagos embebidos falló, reintentando sin relación payments:", error);
-    ({ data: ticketRows, error } = await supabaseClient
-      .from("tickets")
-      .select("ticket_code,created_at,attendees(full_name,is_child),orders(id)")
-      .order("created_at", { ascending: false }));
-  }
-
-  if (error) {
-    console.warn("Carga con órdenes falló, reintentando solo boletos y asistentes:", error);
-    ({ data: ticketRows, error } = await supabaseClient
-      .from("tickets")
-      .select("ticket_code,created_at,attendees(full_name,is_child)")
-      .order("created_at", { ascending: false }));
-  }
 
   if (error) {
     ticketsStatus.textContent = "Error al cargar boletos.";
@@ -167,14 +122,11 @@ const loadTickets = async () => {
 
   const rows = ticketRows ?? [];
 
-  const normalized = rows.map((ticket) => {
-    const pay = paymentFieldsFromOrders(ticket);
-    return {
-      ...ticket,
-      receipt_base64: pay.receipt_base64,
-      reference_phone: pay.reference_phone,
-    };
-  });
+  const normalized = rows.map((ticket) => ({
+    ...ticket,
+    receipt_base64: null,
+    reference_phone: null,
+  }));
   const filtered = applyClientFilter(normalized);
   if (!filtered.length) {
     ticketsStatus.textContent =
