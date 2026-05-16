@@ -4,6 +4,14 @@ const loginIndicator = document.getElementById("login-indicator");
 const loginName = loginIndicator?.querySelector(".login-name");
 const loginAvatar = loginIndicator?.querySelector(".login-avatar");
 
+const updateAuthLinks = (isLoggedIn) => {
+  document.querySelectorAll("[data-auth='required']").forEach((link) => {
+    if (link instanceof HTMLElement) {
+      link.style.display = isLoggedIn ? "" : "none";
+    }
+  });
+};
+
 const openMenu = () => {
   menu.classList.add("menu-open");
 };
@@ -38,6 +46,7 @@ const updateLoginIndicator = () => {
         }
       }
       loginIndicator.classList.add("is-logged");
+      updateAuthLinks(true);
       return;
     } catch (error) {
       // ignore parse errors and fall back to default
@@ -51,6 +60,7 @@ const updateLoginIndicator = () => {
     loginAvatar.classList.remove("has-photo");
   }
   loginIndicator.classList.remove("is-logged");
+  updateAuthLinks(false);
 };
 
 const handleLogout = () => {
