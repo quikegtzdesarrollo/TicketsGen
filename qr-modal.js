@@ -92,6 +92,7 @@ const buildQrExportDataUrl = async () => {
 
 const openModal = (ticketId, owner, phone) => {
   if (!modal) {
+    console.error("TicketGen: no se encontró #qr-modal en esta página.");
     return;
   }
 
@@ -233,6 +234,12 @@ const handleModalAction = (event) => {
   }
 };
 
+window.openTicketQrModal = openModal;
+window.TicketGenQrModal = {
+  open: openModal,
+  close: closeModal,
+};
+
 document.addEventListener("click", (event) => {
   const target = event.target;
   if (!(target instanceof Element)) {
@@ -259,12 +266,6 @@ document.addEventListener("keydown", (event) => {
 });
 
 const shareBtn = modal?.querySelector("#qr-share");
-if (shareBtn instanceof HTMLElement && !navigator.share) {
+if (shareBtn && !navigator.share) {
   shareBtn.hidden = true;
 }
-
-window.openTicketQrModal = openModal;
-window.TicketGenQrModal = {
-  open: openModal,
-  close: closeModal,
-};

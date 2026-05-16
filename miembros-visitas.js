@@ -47,33 +47,6 @@ const formatDisplayId = (id) => {
 
 const qrPayload = (id) => `MV-${id}`;
 
-const openMemberQrFromButton = (button) => {
-  if (!(button instanceof Element)) {
-    return;
-  }
-
-  const ticketId = button.getAttribute("data-ticket-id") ?? "";
-  const owner = button.getAttribute("data-ticket-owner") ?? "";
-  const phone = button.getAttribute("data-ticket-phone") ?? "";
-
-  if (!ticketId) {
-    return;
-  }
-
-  const open =
-    window.TicketGenQrModal?.open ?? window.openTicketQrModal;
-  if (typeof open === "function") {
-    open(ticketId, owner, phone);
-    return;
-  }
-
-  alert("No se pudo abrir el visor de QR. Recarga la página.");
-};
-
-window.showMemberQr = (button) => {
-  openMemberQrFromButton(button);
-};
-
 const digitsOnly = (value) => String(value ?? "").replace(/\D/g, "");
 
 const phoneMatchesFilter = (storedPhone, query) => {
@@ -332,7 +305,6 @@ const renderMembersRows = (rows) => {
           data-ticket-id="${escapeAttr(qrCode)}"
           data-ticket-owner="${escapeAttr(row.full_name)}"
           data-ticket-phone="${escapeAttr(row.reference_phone ?? "")}"
-          onclick="showMemberQr(this)"
         >
           <span aria-hidden="true">📱</span>
         </button>
@@ -618,13 +590,6 @@ bulkUploadButton?.addEventListener("click", () => {
 membersTable?.addEventListener("click", (event) => {
   const target = event.target;
   if (!(target instanceof Element)) {
-    return;
-  }
-
-  const qrButton = target.closest(".qr-button");
-  if (qrButton instanceof Element && membersTable.contains(qrButton)) {
-    event.preventDefault();
-    openMemberQrFromButton(qrButton);
     return;
   }
 
