@@ -1,4 +1,5 @@
 const summaryContainer = document.getElementById("home-summary");
+const MEMBER_RECORD_TYPE = "Miembros o Visitas";
 
 const escapeHtml = (value) =>
   String(value ?? "")
@@ -6,14 +7,6 @@ const escapeHtml = (value) =>
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
-
-const attendeeDisplayName = (ticket) => {
-  const attendees = ticket?.attendees;
-  if (Array.isArray(attendees)) {
-    return attendees[0]?.full_name?.trim() || "";
-  }
-  return attendees?.full_name?.trim() || "";
-};
 
 const churchLabel = (value) => {
   const text = String(value ?? "").trim();
@@ -100,22 +93,23 @@ const renderChurchChart = (rows) => {
   `;
 };
 
-const renderSummary = (title, tickets, totalSpent, lastTicket, chartHtml) => {
+const renderSummary = (title, saleCount, memberCount, totalSpent, chartHtml) => {
+  const totalCombined = saleCount + memberCount;
   summaryContainer.innerHTML = `
     <div class="summary-card">
       <p class="summary-title">${escapeHtml(title)}</p>
       <div class="summary-stats">
         <div>
-          <span class="summary-label">Tus boletos de venta</span>
-          <span class="summary-value">${tickets}</span>
+          <span class="summary-label">Total de boletos</span>
+          <span class="summary-value">${totalCombined}</span>
         </div>
         <div>
-          <span class="summary-label">Tu total en ventas</span>
+          <span class="summary-label">Total en ventas</span>
           <span class="summary-value">$${totalSpent}</span>
         </div>
       </div>
       <p class="summary-detail">
-        Último boleto: ${escapeHtml(lastTicket || "Sin compras aún")}
+        ${saleCount} boleto(s) de venta + ${memberCount} miembro(s) o visita(s).
       </p>
     </div>
     ${chartHtml}
@@ -147,28 +141,25 @@ const loadSummary = async () => {
     return;
   }
 
-  const [userTicketsResult, allTicketsResult, membersResult] = await Promise.all([
-    supabaseClient
-      .from("tickets")
-      .select("price,ticket_code,created_at,attendees(full_name),orders!inner(user_id)")
-      .eq("orders.user_id", dbUser.id)
-      .order("created_at", { ascending: false }),
+  const [allTicketsResult, membersResult] = await Promise.all([
     supabaseClient.from("tickets").select("price"),
-    supabaseClient.from("member_visits").select("inviting_church"),
+    supabaseClient
+      .from("member_visits")
+      .select("inviting_church")
+      .eq("record_type", MEMBER_RECORD_TYPE),
   ]);
 
-  if (userTicketsResult.error) {
+  if (allTicketsResult.error) {
     summaryContainer.innerHTML =
       '<p class="helper">No se pudo cargar el resumen.</p>';
     return;
   }
 
-  const userRows = userTicketsResult.data ?? [];
-  const totalSpent = userRows.reduce((sum, ticket) => sum + Number(ticket.price || 0), 0);
-  const lastTicket = userRows[0];
-  const lastTicketLabel = lastTicket
-    ? `${lastTicket.ticket_code} (${attendeeDisplayName(lastTicket) || "Sin asignar"})`
-    : "";
+  const saleRows = allTicketsResult.data ?? [];
+  const memberRows = membersResult.error ? [] : membersResult.data ?? [];
+  const saleCount = saleRows.length;
+  const memberCount = memberRows.length;
+  const totalSpent = saleRows.reduce((sum, ticket) => sum + Number(ticket.price || 0), 0);
 
   let chartHtml = "";
   if (allTicketsResult.error || membersResult.error) {
@@ -179,15 +170,15 @@ const loadSummary = async () => {
       </div>
     `;
   } else {
-    const chartRows = buildChartRows(membersResult.data, allTicketsResult.data);
+    const chartRows = buildChartRows(memberRows, saleRows);
     chartHtml = renderChurchChart(chartRows);
   }
 
   renderSummary(
     `Hola, ${currentUser.name || "invitado"}`,
-    userRows.length,
+    saleCount,
+    memberCount,
     totalSpent.toFixed(2),
-    lastTicketLabel,
     chartHtml
   );
 };
