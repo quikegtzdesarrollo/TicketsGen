@@ -5,26 +5,33 @@ const receiptModal = document.getElementById("receipt-modal");
 const receiptImage = document.getElementById("receipt-image");
 const receiptLink = document.getElementById("receipt-link");
 
-const paymentsByOrderId = (paymentRows) => {
-  const map = {};
-  for (const row of paymentRows ?? []) {
-    const oid = row?.order_id;
-    if (oid == null) {
-      continue;
-    }
-    const key = String(oid);
-    const prev = map[key];
-    if (!prev) {
-      map[key] = row;
-      continue;
-    }
-    const prevPhone = String(prev.reference_phone ?? "").trim();
-    const nextPhone = String(row.reference_phone ?? "").trim();
-    if (!prevPhone && nextPhone) {
-      map[key] = row;
-    }
+const paymentFieldsFromOrders = (ticket) => {
+  let orders = ticket.orders;
+  if (!orders) {
+    return { reference_phone: null, receipt_base64: null };
   }
-  return map;
+  if (Array.isArray(orders)) {
+    orders = orders[0];
+  }
+  if (!orders) {
+    return { reference_phone: null, receipt_base64: null };
+  }
+  let payments = orders.payments;
+  if (!payments) {
+    return { reference_phone: null, receipt_base64: null };
+  }
+  if (!Array.isArray(payments)) {
+    payments = [payments];
+  }
+  if (!payments.length) {
+    return { reference_phone: null, receipt_base64: null };
+  }
+  const withPhone = payments.find((p) => String(p?.reference_phone ?? "").trim());
+  const row = withPhone ?? payments[0];
+  return {
+    reference_phone: row?.reference_phone ?? null,
+    receipt_base64: row?.receipt_base64 ?? null,
+  };
 };
 
 const digitsOnly = (value) => String(value ?? "").replace(/\D/g, "");
@@ -40,7 +47,7 @@ const phoneMatchesFilter = (storedPhone, query) => {
   }
   const qDigits = digitsOnly(q);
   if (!qDigits.length) {
-    return false;
+    return true;
   }
   return digitsOnly(raw).includes(qDigits);
 };
@@ -122,50 +129,35 @@ const applyClientFilter = (tickets) => {
 const loadTickets = async () => {
   const currentUser = getCurrentUser();
   if (!currentUser) {
-    ticketsStatus.textContent = "Inicia sesión para ver tus boletos.";
+    ticketsStatus.textContent = "Inicia sesión para ver los boletos.";
     return;
   }
 
   ticketsStatus.textContent = "Cargando boletos...";
-  const { data: dbUser, error: userError } = await ensureUserInDb(currentUser);
-  if (!dbUser?.id) {
-    ticketsStatus.textContent = `No se pudo validar el usuario. ${userError ?? ""}`.trim();
-    return;
-  }
 
-  const { data: userOrders, error: ordersLookupError } = await supabaseClient
-    .from("orders")
-    .select("id")
-    .eq("user_id", dbUser.id);
+  const selectWithPayments =
+    "ticket_code,created_at,attendees(full_name,is_child),orders(payments(receipt_base64,reference_phone))";
 
-  if (ordersLookupError) {
-    ticketsStatus.textContent = "Error al cargar boletos.";
-    console.error(ordersLookupError);
-    return;
-  }
-
-  const orderIdsForUser = (userOrders ?? []).map((o) => o.id).filter((id) => id != null);
-
-  if (!orderIdsForUser.length) {
-    ticketsStatus.textContent = "No hay boletos para mostrar.";
-    ticketsTable.innerHTML = `
-      <div class="table-row table-head">
-        <span>ID del boleto</span>
-        <span>Asignado a</span>
-        <span>Celular</span>
-        <span>QR</span>
-        <span>Comprobante</span>
-        <span>Eliminar</span>
-      </div>
-    `;
-    return;
-  }
-
-  const { data: ticketRows, error } = await supabaseClient
+  let { data: ticketRows, error } = await supabaseClient
     .from("tickets")
-    .select("ticket_code,created_at,order_id,attendees(full_name,is_child)")
-    .in("order_id", orderIdsForUser)
+    .select(selectWithPayments)
     .order("created_at", { ascending: false });
+
+  if (error) {
+    console.warn("Carga con pagos embebidos falló, reintentando sin relación payments:", error);
+    ({ data: ticketRows, error } = await supabaseClient
+      .from("tickets")
+      .select("ticket_code,created_at,attendees(full_name,is_child),orders(id)")
+      .order("created_at", { ascending: false }));
+  }
+
+  if (error) {
+    console.warn("Carga con órdenes falló, reintentando solo boletos y asistentes:", error);
+    ({ data: ticketRows, error } = await supabaseClient
+      .from("tickets")
+      .select("ticket_code,created_at,attendees(full_name,is_child)")
+      .order("created_at", { ascending: false }));
+  }
 
   if (error) {
     ticketsStatus.textContent = "Error al cargar boletos.";
@@ -173,36 +165,22 @@ const loadTickets = async () => {
     return;
   }
 
-  const orderIds = [
-    ...new Set((ticketRows ?? []).map((t) => t.order_id).filter((id) => id != null)),
-  ];
+  const rows = ticketRows ?? [];
 
-  let payMap = {};
-  if (orderIds.length > 0) {
-    const { data: paymentRows, error: paymentsError } = await supabaseClient
-      .from("payments")
-      .select("order_id,reference_phone,receipt_base64")
-      .in("order_id", orderIds);
-
-    if (paymentsError) {
-      console.error(paymentsError);
-    } else {
-      payMap = paymentsByOrderId(paymentRows);
-    }
-  }
-
-  const normalized = (ticketRows ?? []).map((ticket) => {
-    const oid = ticket.order_id;
-    const pay = oid != null ? payMap[String(oid)] : undefined;
+  const normalized = rows.map((ticket) => {
+    const pay = paymentFieldsFromOrders(ticket);
     return {
       ...ticket,
-      receipt_base64: pay?.receipt_base64 ?? null,
-      reference_phone: pay?.reference_phone ?? null,
+      receipt_base64: pay.receipt_base64,
+      reference_phone: pay.reference_phone,
     };
   });
   const filtered = applyClientFilter(normalized);
   if (!filtered.length) {
-    ticketsStatus.textContent = "No hay boletos para mostrar.";
+    ticketsStatus.textContent =
+      normalized.length > 0
+        ? "Ningún boleto coincide con los filtros. Vacía fechas y Celular o pulsa «Aplicar filtros» tras limpiar."
+        : "No hay boletos para mostrar.";
     ticketsTable.innerHTML = `
       <div class="table-row table-head">
         <span>ID del boleto</span>
