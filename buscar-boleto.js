@@ -102,62 +102,172 @@ const memberMatchesToken = (row, token) => {
   );
 };
 
-const searchSaleTickets = async (query) => {
-  const pattern = `%${escapeIlike(query)}%`;
-  const { data, error } = await supabaseClient
-    .from("tickets")
-    .select(SALE_TICKET_SELECT)
-    .ilike("ticket_code", pattern)
-    .order("created_at", { ascending: false })
-    .limit(SEARCH_LIMIT);
+const nameMatchesQuery = (name, query) => {
+  const normalizedName = String(name ?? "").trim().toLowerCase();
+  const normalizedQuery = String(query ?? "").trim().toLowerCase();
+  if (!normalizedName || normalizedQuery.length < 2) {
+    return false;
+  }
+  return normalizedName.includes(normalizedQuery);
+};
 
-  if (error) {
-    throw error;
+const looksLikeIdSearch = (query) => {
+  const trimmed = String(query ?? "").trim();
+  const upper = trimmed.toUpperCase();
+  if (upper.startsWith("TG-") || upper.startsWith(MEMBER_QR_PREFIX) || upper.startsWith("MV")) {
+    return true;
+  }
+  if (/\s/.test(trimmed)) {
+    return false;
+  }
+  return /^[A-Z0-9-]+$/i.test(trimmed);
+};
+
+const dedupeRows = (rows, getKey) => {
+  const map = new Map();
+  for (const row of rows) {
+    const key = getKey(row);
+    if (key != null && !map.has(key)) {
+      map.set(key, row);
+    }
+  }
+  return [...map.values()];
+};
+
+const mapSaleTicketResult = (ticket) => ({
+  kind: "sale",
+  id: ticket.ticket_code,
+  displayId: ticket.ticket_code,
+  name: attendeeDisplayName(ticket) || "-",
+  detail: attendeeTypeLabel(ticket),
+  price:
+    ticket.price !== undefined && ticket.price !== null
+      ? `$${Number(ticket.price).toFixed(2)}`
+      : "-",
+  used: !!ticket.used,
+  usedAt: ticket.used_at,
+  raw: ticket,
+});
+
+const mapMemberVisitResult = (row) => {
+  const church = row.inviting_church?.trim() || "";
+  const recordType = row.record_type?.trim() || "Miembros o Visitas";
+  return {
+    kind: "member",
+    id: row.id,
+    displayId: formatMemberShortCode(row.id),
+    name: row.full_name?.trim() || "-",
+    detail: church ? `${recordType} · ${church}` : recordType,
+    price: "-",
+    used: !!row.used,
+    usedAt: row.used_at,
+    raw: row,
+  };
+};
+
+const searchSaleTickets = async (query) => {
+  const trimmed = String(query ?? "").trim();
+  const pattern = `%${escapeIlike(trimmed)}%`;
+
+  const [byCodeResult, byNameAttendeesResult] = await Promise.all([
+    supabaseClient
+      .from("tickets")
+      .select(SALE_TICKET_SELECT)
+      .ilike("ticket_code", pattern)
+      .order("created_at", { ascending: false })
+      .limit(SEARCH_LIMIT),
+    supabaseClient
+      .from("attendees")
+      .select("id")
+      .ilike("full_name", pattern)
+      .limit(SEARCH_LIMIT),
+  ]);
+
+  if (byCodeResult.error) {
+    throw byCodeResult.error;
+  }
+  if (byNameAttendeesResult.error) {
+    throw byNameAttendeesResult.error;
   }
 
-  return (data ?? []).map((ticket) => ({
-    kind: "sale",
-    id: ticket.ticket_code,
-    displayId: ticket.ticket_code,
-    name: attendeeDisplayName(ticket) || "-",
-    detail: attendeeTypeLabel(ticket),
-    price:
-      ticket.price !== undefined && ticket.price !== null
-        ? `$${Number(ticket.price).toFixed(2)}`
-        : "-",
-    used: !!ticket.used,
-    usedAt: ticket.used_at,
-    raw: ticket,
-  }));
+  let tickets = byCodeResult.data ?? [];
+  const attendeeIds = (byNameAttendeesResult.data ?? [])
+    .map((row) => row.id)
+    .filter((id) => id != null);
+
+  if (attendeeIds.length) {
+    const { data: byNameTickets, error: ticketsError } = await supabaseClient
+      .from("tickets")
+      .select(SALE_TICKET_SELECT)
+      .in("attendee_id", attendeeIds)
+      .order("created_at", { ascending: false })
+      .limit(SEARCH_LIMIT);
+
+    if (ticketsError) {
+      throw ticketsError;
+    }
+
+    tickets = dedupeRows([...tickets, ...(byNameTickets ?? [])], (ticket) => ticket.ticket_code);
+  }
+
+  return tickets
+    .filter((ticket) => {
+      const code = String(ticket.ticket_code ?? "").toLowerCase();
+      const q = trimmed.toLowerCase();
+      return code.includes(q) || nameMatchesQuery(attendeeDisplayName(ticket), trimmed);
+    })
+    .slice(0, SEARCH_LIMIT)
+    .map(mapSaleTicketResult);
 };
 
 const searchMemberVisits = async (query) => {
-  const token = normalizeSearchToken(query);
-  const { data, error } = await supabaseClient
+  const trimmed = String(query ?? "").trim();
+  const pattern = `%${escapeIlike(trimmed)}%`;
+  const idToken = normalizeSearchToken(trimmed);
+  const matches = new Map();
+
+  const { data: byNameRows, error: byNameError } = await supabaseClient
     .from("member_visits")
     .select(MEMBER_VISIT_SELECT)
-    .order("created_at", { ascending: false });
+    .ilike("full_name", pattern)
+    .order("created_at", { ascending: false })
+    .limit(SEARCH_LIMIT);
 
-  if (error) {
-    throw error;
+  if (byNameError) {
+    throw byNameError;
   }
 
-  const rows = (data ?? []).filter((row) => memberMatchesToken(row, token));
-  return rows.slice(0, SEARCH_LIMIT).map((row) => {
-    const church = row.inviting_church?.trim() || "";
-    const recordType = row.record_type?.trim() || "Miembros o Visitas";
-    return {
-      kind: "member",
-      id: row.id,
-      displayId: formatMemberShortCode(row.id),
-      name: row.full_name?.trim() || "-",
-      detail: church ? `${recordType} · ${church}` : recordType,
-      price: "-",
-      used: !!row.used,
-      usedAt: row.used_at,
-      raw: row,
-    };
-  });
+  for (const row of byNameRows ?? []) {
+    if (row.id) {
+      matches.set(row.id, row);
+    }
+  }
+
+  if (idToken.length >= 2 && looksLikeIdSearch(trimmed)) {
+    const { data: allRows, error: allError } = await supabaseClient
+      .from("member_visits")
+      .select(MEMBER_VISIT_SELECT)
+      .order("created_at", { ascending: false });
+
+    if (allError) {
+      throw allError;
+    }
+
+    for (const row of allRows ?? []) {
+      if (row.id && memberMatchesToken(row, idToken) && !matches.has(row.id)) {
+        matches.set(row.id, row);
+      }
+    }
+  }
+
+  return [...matches.values()]
+    .filter(
+      (row) =>
+        memberMatchesToken(row, idToken) ||
+        nameMatchesQuery(row.full_name, trimmed)
+    )
+    .slice(0, SEARCH_LIMIT)
+    .map(mapMemberVisitResult);
 };
 
 const renderResults = (results) => {
