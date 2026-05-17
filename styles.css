@@ -238,10 +238,123 @@ h1 {
   font-size: 11px;
 }
 
+.summary-stats-wide {
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 20px 28px;
+}
+
+.summary-value-ok {
+  color: #166534;
+}
+
+.home-chart-entries {
+  margin-top: 16px;
+}
+
+.entry-totals-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.entry-total-card {
+  padding: 12px;
+  border-radius: 10px;
+  background: #f6f8ff;
+  border: 1px solid #e4e9f5;
+}
+
+.entry-total-card--ok {
+  background: #ecfdf3;
+  border-color: #bbf7d0;
+}
+
+.entry-total-card--pending {
+  background: #fff7ed;
+  border-color: #fed7aa;
+}
+
+.entry-total-sub {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  color: #5f6b85;
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 18px;
+  margin-bottom: 12px;
+  font-size: 11px;
+  color: #5f6b85;
+}
+
+.chart-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chart-legend-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.chart-row-entry {
+  grid-template-columns: minmax(96px, 32%) 1fr minmax(88px, auto);
+}
+
+.chart-bar-wrap-stacked {
+  display: flex;
+  height: 10px;
+  min-width: 48px;
+  max-width: 100%;
+}
+
+.chart-bar-segment {
+  display: block;
+  height: 100%;
+  min-width: 2px;
+}
+
+.chart-bar-checked {
+  background: #22a06b;
+  border-radius: 999px 0 0 999px;
+}
+
+.chart-bar-segment.chart-bar-checked:only-child,
+.chart-bar-wrap-stacked .chart-bar-checked:last-child {
+  border-radius: 999px;
+}
+
+.chart-bar-pending {
+  background: #c5cee8;
+  border-radius: 0 999px 999px 0;
+}
+
+.chart-bar-wrap-stacked .chart-bar-pending:only-child {
+  border-radius: 999px;
+}
+
+@media (max-width: 640px) {
+  .entry-totals-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 480px) {
   .chart-row {
     grid-template-columns: 1fr;
     gap: 4px;
+  }
+
+  .chart-row-entry .chart-bar-wrap-stacked {
+    width: 100% !important;
   }
 
   .chart-meta {
